@@ -1,0 +1,1597 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Datasefil API",
+        "description": "API para gestion de clientes, contactos, direcciones, correos y datos financieros. La mayoria de endpoints requieren autenticacion Bearer (Sanctum).",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://172.20.1.105:8000/api",
+            "description": "Servidor principal"
+        }
+    ],
+    "paths": {
+        "/api/addresses/verified/{id}": {
+            "patch": {
+                "tags": [
+                    "Direcciones"
+                ],
+                "summary": "Verificar direccion",
+                "description": "Incrementa counter_valid o counter_invalid segun el valor de is_valid.",
+                "operationId": "dfd54a235d5299816e4c8be8d546e0b1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la direccion",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 5
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "is_valid"
+                                ],
+                                "properties": {
+                                    "is_valid": {
+                                        "description": "true incrementa counter_valid, false incrementa counter_invalid",
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Direccion actualizada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 5
+                                        },
+                                        "address": {
+                                            "type": "string",
+                                            "example": "Av. Loja y Sucre"
+                                        },
+                                        "client_id": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "counter_valid": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "counter_invalid": {
+                                            "type": "integer",
+                                            "example": 0
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Direccion no encontrada"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Iniciar sesion",
+                "description": "Autentica al usuario y devuelve un token Sanctum.",
+                "operationId": "a3b306d14572d1f4bd6c064b3233e7b8",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "admin@datasefil.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "secret"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login exitoso",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "token": {
+                                            "properties": {
+                                                "accessToken": {
+                                                    "type": "string",
+                                                    "example": "1|abc123"
+                                                },
+                                                "plainTextToken": {
+                                                    "type": "string",
+                                                    "example": "1|abc123"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "user": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Admin"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "admin@datasefil.com"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Credenciales incorrectas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No autorizado"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/clients": {
+            "get": {
+                "tags": [
+                    "Clientes"
+                ],
+                "summary": "Buscar clientes",
+                "description": "Devuelve clientes paginados desde la base local, leads o DatadiverService. El campo _source indica el origen: datasefil, leads o datadiverservice.",
+                "operationId": "d00d20521584ab5da83e088abb7aded2",
+                "parameters": [
+                    {
+                        "name": "identification",
+                        "in": "query",
+                        "description": "Cedula (REGEXP)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "1100290830"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "description": "Nombre (REGEXP)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "MALLA"
+                        }
+                    },
+                    {
+                        "name": "email",
+                        "in": "query",
+                        "description": "Correo (REGEXP)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "gmail"
+                        }
+                    },
+                    {
+                        "name": "phone",
+                        "in": "query",
+                        "description": "Telefono exacto",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "0991234567"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista paginada de clientes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "_source": {
+                                            "type": "string",
+                                            "example": "datasefil"
+                                        },
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 15
+                                                    },
+                                                    "identification": {
+                                                        "type": "string",
+                                                        "example": "1100290830"
+                                                    },
+                                                    "name": {
+                                                        "type": "string",
+                                                        "example": "MALLA YUNGA MARIA"
+                                                    },
+                                                    "birth": {
+                                                        "type": "string",
+                                                        "example": "1960-08-21"
+                                                    },
+                                                    "gender": {
+                                                        "type": "string",
+                                                        "example": "FEMENINO"
+                                                    },
+                                                    "state_civil": {
+                                                        "type": "string",
+                                                        "example": "SOLTERO"
+                                                    },
+                                                    "age": {
+                                                        "type": "integer",
+                                                        "example": 64
+                                                    },
+                                                    "contacts": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "parents": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "address": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "emails": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/clients/{identification}": {
+            "get": {
+                "tags": [
+                    "Clientes"
+                ],
+                "summary": "Detalle de cliente",
+                "description": "Perfil completo del cliente con contactos, direcciones, correos, familiares y trabajos. Enriquece desde leads y DatadiverService si faltan datos.",
+                "operationId": "b7e43f7800488a4f6baf5dc6b47aa7c4",
+                "parameters": [
+                    {
+                        "name": "identification",
+                        "in": "path",
+                        "description": "Numero de cedula",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "1100290830"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Perfil completo del cliente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "_source": {
+                                            "type": "string",
+                                            "example": "datasefil"
+                                        },
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "identification": {
+                                            "type": "string",
+                                            "example": "1100290830"
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "example": "MALLA YUNGA MARIA ROSARIO"
+                                        },
+                                        "birth": {
+                                            "type": "string",
+                                            "example": "1960-08-21"
+                                        },
+                                        "gender": {
+                                            "type": "string",
+                                            "example": "FEMENINO"
+                                        },
+                                        "state_civil": {
+                                            "type": "string",
+                                            "example": "SOLTERO"
+                                        },
+                                        "nationality": {
+                                            "type": "string",
+                                            "example": "ECUATORIANA"
+                                        },
+                                        "profession": {
+                                            "type": "string",
+                                            "example": "COMERCIANTE"
+                                        },
+                                        "salary": {
+                                            "type": "number",
+                                            "example": 500
+                                        },
+                                        "age": {
+                                            "type": "integer",
+                                            "example": 64
+                                        },
+                                        "contacts": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "phone_number": {
+                                                        "type": "string",
+                                                        "example": "0991234567"
+                                                    },
+                                                    "phone_type": {
+                                                        "type": "string",
+                                                        "example": "CELULAR"
+                                                    },
+                                                    "is_new": {
+                                                        "type": "boolean",
+                                                        "example": false
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "parents": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 741
+                                                    },
+                                                    "type": {
+                                                        "type": "string",
+                                                        "example": "HIJO"
+                                                    },
+                                                    "name": {
+                                                        "type": "string",
+                                                        "example": "PACCHA MALLA JOSE LUIS"
+                                                    },
+                                                    "identification": {
+                                                        "type": "string",
+                                                        "example": "1100286804"
+                                                    },
+                                                    "birth": {
+                                                        "type": "string",
+                                                        "example": "1939-10-16"
+                                                    },
+                                                    "gender": {
+                                                        "type": "string",
+                                                        "example": "MASCULINO"
+                                                    },
+                                                    "age": {
+                                                        "type": "integer",
+                                                        "example": 86
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "address": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 3
+                                                    },
+                                                    "address": {
+                                                        "type": "string",
+                                                        "example": "Av. Loja y Sucre"
+                                                    },
+                                                    "province": {
+                                                        "type": "string",
+                                                        "example": "LOJA"
+                                                    },
+                                                    "city": {
+                                                        "type": "string",
+                                                        "example": "LOJA"
+                                                    },
+                                                    "is_valid": {
+                                                        "type": "string",
+                                                        "example": "SI"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "emails": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 2
+                                                    },
+                                                    "direction": {
+                                                        "type": "string",
+                                                        "example": "cliente@gmail.com"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "works": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Cliente no encontrado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/contacts": {
+            "get": {
+                "tags": [
+                    "Contactos"
+                ],
+                "summary": "Listar contactos",
+                "description": "Devuelve contactos paginados, opcionalmente filtrados por numero de telefono.",
+                "operationId": "0f9efb5609dbb039b35ecafb28e492a2",
+                "parameters": [
+                    {
+                        "name": "phone_number",
+                        "in": "query",
+                        "description": "Filtrar por numero exacto",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "0991234567"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista paginada de contactos",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 50
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "phone_number": {
+                                                        "type": "string",
+                                                        "example": "0991234567"
+                                                    },
+                                                    "phone_type": {
+                                                        "type": "string",
+                                                        "example": "CELULAR"
+                                                    },
+                                                    "client_id": {
+                                                        "type": "integer",
+                                                        "example": 15
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Contactos"
+                ],
+                "summary": "Crear contacto",
+                "description": "Asocia un numero de telefono a un cliente. Devuelve 409 si ya existe.",
+                "operationId": "a3b0baf957a16c1ed505f2e8985c254c",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "phone_number",
+                                    "client_id"
+                                ],
+                                "properties": {
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "0991234567"
+                                    },
+                                    "client_id": {
+                                        "type": "integer",
+                                        "example": 15
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Contacto creado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 100
+                                        },
+                                        "phone_number": {
+                                            "type": "string",
+                                            "example": "0991234567"
+                                        },
+                                        "client_id": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "counter_correct_number": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "counter_incorrect_number": {
+                                            "type": "integer",
+                                            "example": 0
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "El contacto ya existe",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "El contacto ya existe"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/contacts/{id}": {
+            "get": {
+                "tags": [
+                    "Contactos"
+                ],
+                "summary": "Ver contacto",
+                "description": "Devuelve el detalle de un contacto por su ID.",
+                "operationId": "4b37f4c90f5cd7974a09bd688ac4d3dd",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del contacto",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalle del contacto",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 100
+                                        },
+                                        "phone_number": {
+                                            "type": "string",
+                                            "example": "0991234567"
+                                        },
+                                        "phone_type": {
+                                            "type": "string",
+                                            "example": "CELULAR"
+                                        },
+                                        "client_id": {
+                                            "type": "integer",
+                                            "example": 15
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Contacto no encontrado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Contactos"
+                ],
+                "summary": "Actualizar contacto",
+                "description": "Actualiza los campos de un contacto existente.",
+                "operationId": "189926711f9a4749815313e463a34387",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del contacto",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 100
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "0991234567"
+                                    },
+                                    "phone_type": {
+                                        "type": "string",
+                                        "example": "CELULAR"
+                                    },
+                                    "client_id": {
+                                        "type": "integer",
+                                        "example": 15
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Contacto actualizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 100
+                                        },
+                                        "phone_number": {
+                                            "type": "string",
+                                            "example": "0991234567"
+                                        },
+                                        "phone_type": {
+                                            "type": "string",
+                                            "example": "CELULAR"
+                                        },
+                                        "client_id": {
+                                            "type": "integer",
+                                            "example": 15
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Contacto no encontrado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/contacts/verified/{id}": {
+            "patch": {
+                "tags": [
+                    "Contactos"
+                ],
+                "summary": "Verificar contacto",
+                "description": "Incrementa counter_correct_number o counter_incorrect_number segun is_verified.",
+                "operationId": "b23b2e3eb8f809613348d61c88351d53",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del contacto",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 100
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "is_verified"
+                                ],
+                                "properties": {
+                                    "is_verified": {
+                                        "description": "true incrementa correcto, false incrementa incorrecto",
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Contacto actualizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 100
+                                        },
+                                        "phone_number": {
+                                            "type": "string",
+                                            "example": "0991234567"
+                                        },
+                                        "counter_correct_number": {
+                                            "type": "integer",
+                                            "example": 2
+                                        },
+                                        "counter_incorrect_number": {
+                                            "type": "integer",
+                                            "example": 0
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Contacto no encontrado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/contacts/import": {
+            "post": {
+                "tags": [
+                    "Contactos"
+                ],
+                "summary": "Importar clientes y contactos",
+                "description": "Importacion masiva de clientes con sus numeros de telefono.",
+                "operationId": "598002dfb387dabff0719109c82d3b17",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "data"
+                                ],
+                                "properties": {
+                                    "data": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "ci": {
+                                                    "type": "string",
+                                                    "example": "1100290830"
+                                                },
+                                                "nombre": {
+                                                    "type": "string",
+                                                    "example": "MALLA YUNGA MARIA"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "maria@gmail.com"
+                                                },
+                                                "micro_activa": {
+                                                    "type": "string",
+                                                    "example": "SI"
+                                                },
+                                                "fecha_nacimiento": {
+                                                    "type": "string",
+                                                    "example": "21/08/1960"
+                                                },
+                                                "genero": {
+                                                    "type": "string",
+                                                    "example": "FEMENINO"
+                                                },
+                                                "estado_civil": {
+                                                    "type": "string",
+                                                    "example": "SOLTERO"
+                                                },
+                                                "actividad_economica": {
+                                                    "type": "string",
+                                                    "example": "COMERCIO"
+                                                },
+                                                "sector_economico": {
+                                                    "type": "string",
+                                                    "example": "URBANO"
+                                                },
+                                                "nacionalidad": {
+                                                    "type": "string",
+                                                    "example": "ECUATORIANA"
+                                                },
+                                                "profesion": {
+                                                    "type": "string",
+                                                    "example": "COMERCIANTE"
+                                                },
+                                                "salario": {
+                                                    "type": "number",
+                                                    "example": 500
+                                                },
+                                                "phone1": {
+                                                    "type": "string",
+                                                    "example": "0991234567"
+                                                },
+                                                "phone2": {
+                                                    "type": "string",
+                                                    "example": ""
+                                                },
+                                                "phone3": {
+                                                    "type": "string",
+                                                    "example": ""
+                                                },
+                                                "phone4": {
+                                                    "type": "string",
+                                                    "example": ""
+                                                },
+                                                "phone5": {
+                                                    "type": "string",
+                                                    "example": ""
+                                                },
+                                                "phone6": {
+                                                    "type": "string",
+                                                    "example": ""
+                                                },
+                                                "phone7": {
+                                                    "type": "string",
+                                                    "example": ""
+                                                },
+                                                "phone8": {
+                                                    "type": "string",
+                                                    "example": ""
+                                                },
+                                                "phone9": {
+                                                    "type": "string",
+                                                    "example": ""
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Importacion completada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "contactos": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "clientes": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/emails": {
+            "post": {
+                "tags": [
+                    "Correos"
+                ],
+                "summary": "Crear correo",
+                "description": "Asocia un nuevo correo electronico a un cliente.",
+                "operationId": "c7c6d8c9be99fdb3d9eddbef65cf27f1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "direction",
+                                    "client_id"
+                                ],
+                                "properties": {
+                                    "direction": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "cliente@gmail.com"
+                                    },
+                                    "client_id": {
+                                        "type": "integer",
+                                        "example": 15
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Correo creado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "direction": {
+                                            "type": "string",
+                                            "example": "cliente@gmail.com"
+                                        },
+                                        "client_id": {
+                                            "type": "integer",
+                                            "example": 15
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validacion fallida"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/emails/{id}": {
+            "delete": {
+                "tags": [
+                    "Correos"
+                ],
+                "summary": "Desactivar correo",
+                "description": "Marca un correo como inactivo.",
+                "operationId": "8bfcd39e043a7c0e11ad0c9c08ad77f1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del correo",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Correo desactivado"
+                    },
+                    "404": {
+                        "description": "Correo no encontrado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Correos"
+                ],
+                "summary": "Actualizar correo",
+                "description": "Actualiza la direccion de un correo electronico existente.",
+                "operationId": "013dcf7965fbdffed04da74e937c949f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del correo",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 10
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "direction",
+                                    "client_id"
+                                ],
+                                "properties": {
+                                    "direction": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "nuevo@gmail.com"
+                                    },
+                                    "client_id": {
+                                        "type": "integer",
+                                        "example": 15
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Correo actualizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "direction": {
+                                            "type": "string",
+                                            "example": "nuevo@gmail.com"
+                                        },
+                                        "client_id": {
+                                            "type": "integer",
+                                            "example": 15
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Correo no encontrado"
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/financials/{identification}": {
+            "get": {
+                "tags": [
+                    "Financieros"
+                ],
+                "summary": "Consultar historial crediticio",
+                "description": "Obtiene el reporte Equifax de un cliente y lo almacena. Crea el cliente localmente si no existe.",
+                "operationId": "54ba86b01d42bd7b32bc539afc50ae6b",
+                "parameters": [
+                    {
+                        "name": "identification",
+                        "in": "path",
+                        "description": "Numero de cedula del cliente",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "1100290830"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reporte crediticio",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "client_id": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "risk_indicator": {
+                                            "type": "string",
+                                            "example": "NORMAL",
+                                            "nullable": true
+                                        },
+                                        "score": {
+                                            "type": "number",
+                                            "example": 720,
+                                            "nullable": true
+                                        },
+                                        "over_indebtedness_score": {
+                                            "type": "number",
+                                            "example": 85,
+                                            "nullable": true
+                                        },
+                                        "over_indebtedness_level": {
+                                            "type": "string",
+                                            "example": "BAJO",
+                                            "nullable": true
+                                        },
+                                        "total_operations": {
+                                            "type": "integer",
+                                            "example": 5,
+                                            "nullable": true
+                                        },
+                                        "total_operations_balance": {
+                                            "type": "number",
+                                            "example": 15000.5,
+                                            "nullable": true
+                                        },
+                                        "total_demanded_operations_balance": {
+                                            "type": "number",
+                                            "example": 0,
+                                            "nullable": true
+                                        },
+                                        "total_charged_off_balance": {
+                                            "type": "number",
+                                            "example": 0,
+                                            "nullable": true
+                                        },
+                                        "sicom_amount": {
+                                            "type": "number",
+                                            "example": 5000,
+                                            "nullable": true
+                                        },
+                                        "sb_amount": {
+                                            "type": "number",
+                                            "example": 10000.5,
+                                            "nullable": true
+                                        },
+                                        "credit_count": {
+                                            "type": "integer",
+                                            "example": 3,
+                                            "nullable": true
+                                        },
+                                        "raw_response": {
+                                            "description": "Respuesta completa de Equifax",
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "No se pudo obtener datos de Equifax",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Could not retrieve financial data from Equifax"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/users": {
+            "get": {
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Listar usuarios",
+                "description": "Devuelve la lista paginada de usuarios del sistema.",
+                "operationId": "c457726701591d1183b53aa71fc13441",
+                "responses": {
+                    "200": {
+                        "description": "Lista paginada de usuarios",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 5
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "name": {
+                                                        "type": "string",
+                                                        "example": "Admin"
+                                                    },
+                                                    "email": {
+                                                        "type": "string",
+                                                        "example": "admin@datasefil.com"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Crear usuario",
+                "description": "Crea un nuevo usuario del sistema.",
+                "operationId": "592819a0265360b2014512d6dbfaf0e7",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Juan Perez"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "juan@datasefil.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "secret123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Usuario creado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 2
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "example": "Juan Perez"
+                                        },
+                                        "email": {
+                                            "type": "string",
+                                            "example": "juan@datasefil.com"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "bearerFormat": "token",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Autenticacion"
+        },
+        {
+            "name": "Usuarios",
+            "description": "Gestion de usuarios del sistema"
+        },
+        {
+            "name": "Clientes",
+            "description": "Busqueda y detalle de clientes"
+        },
+        {
+            "name": "Contactos",
+            "description": "Numeros de telefono de clientes"
+        },
+        {
+            "name": "Correos",
+            "description": "Correos electronicos de clientes"
+        },
+        {
+            "name": "Direcciones",
+            "description": "Direcciones de clientes"
+        },
+        {
+            "name": "Financieros",
+            "description": "Consulta de historial crediticio Equifax"
+        }
+    ]
+}

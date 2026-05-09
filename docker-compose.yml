@@ -1,0 +1,77 @@
+networks:
+  mdm_network:
+    driver: bridge
+    name: centralizacion_net
+
+volumes:
+  postgres_data:
+    name: centralizacion_postgres_data
+
+services:
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Base de Datos PostgreSQL 15
+  # ────────────────────────────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: centralizacion_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-S3F1L_Dev}
+      POSTGRES_DB:       ${POSTGRES_DB:-centralizacion_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mdm_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-centralizacion_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # API REST — FastAPI / Uvicorn
+  # ────────────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: centralizacion_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-S3F1L_Dev}@db:5432/${POSTGRES_DB:-centralizacion_db}
+      API_KEYS: ${VALID_API_KEYS}
+    # Exponemos el puerto de forma LOCAL (127.0.0.1) para que el Nginx del servidor físico lo consuma.
+    ports:
+      - "127.0.0.1:8080:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mdm_network
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Worker Scheduler — ETL Polling
+  # ────────────────────────────────────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: centralizacion_worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-S3F1L_Dev}@db:5432/${POSTGRES_DB:-centralizacion_db}
+      API_KEYS: ${VALID_API_KEYS}
+    command: python -m app.worker.scheduler
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+    networks:
+      - mdm_network

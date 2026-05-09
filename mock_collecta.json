@@ -1,0 +1,48 @@
+[
+  {
+    "ci": "1104567890",
+    "name": "PEREZ LOPEZ JUAN CARLOS",
+    "gender": "Masculino",
+    "civil_status": "CASADO",
+    "economic_activity": "Venta al por menor",
+    "phones": [
+      {
+        "number": "0991234567",
+        "type": "CELULAR",
+        "status": "ACTIVE"
+      },
+      {
+        "number": "072543210",
+        "type": "FIJO",
+        "status": "ACTIVE"
+      }
+    ]
+  },
+  {
+    "ci": "1712345678",
+    "name": "GOMEZ ZAMBRANO MARIA FERNANDA",
+    "gender": "Femenino",
+    "civil_status": "SOLTERO",
+    "economic_activity": "Servicios profesionales",
+    "phones": [
+      {
+        "number": "0987654321",
+        "type": "CELULAR",
+        "status": "ACTIVE"
+      },
+      {
+        "number": "0990001111",
+        "type": "CELULAR",
+        "status": "INACTIVE" 
+      }
+    ]
+  },
+  {
+    "ci": "0923456781",
+    "name": "RUIZ CARLOS",
+    "gender": null,
+    "civil_status": null,
+    "economic_activity": null,
+    "phones": []
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(New-Item -ItemType Directory -Force -Path \"c:\\\\Users\\\\Sistemas\\\\Desktop\\\\CASV_DOCS\\\\CentralizacionInformacion\\\\app\\\\worker\")",
+      "Bash(Out-Null)",
+      "Bash(New-Item -ItemType File -Force -Path \"c:\\\\Users\\\\Sistemas\\\\Desktop\\\\CASV_DOCS\\\\CentralizacionInformacion\\\\app\\\\worker\\\\__init__.py\")"
+    ]
+  }
+}

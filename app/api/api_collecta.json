@@ -1,0 +1,3730 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "CollAPI - API de Cobranzas",
+        "description": "API REST para el sistema de gestión de cobranzas",
+        "contact": {
+            "email": "soporte@collapi.com"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "https://collapi.sefil.com.ec/public/",
+            "description": "Servidor API"
+        }
+    ],
+    "paths": {
+        "/api": {},
+        "/api/agencies": {
+            "get": {
+                "tags": [
+                    "Agencias"
+                ],
+                "summary": "Listar agencias",
+                "description": "Obtiene el listado de todas las agencias, con opción de filtrar por nombre",
+                "operationId": "getAgenciesList",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "description": "Filtrar por nombre de agencia (búsqueda parcial)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de agencias obtenida correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Agencias obtenidas correctamente"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "name": {
+                                                        "type": "string",
+                                                        "example": "QUITO"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/businesses": {
+            "get": {
+                "tags": [
+                    "Empresas"
+                ],
+                "summary": "Listar empresas",
+                "description": "Obtiene una lista paginada de todas las empresas",
+                "operationId": "getBusinessesList",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Número de empresas por página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de empresas obtenida correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Empresas obtenidas correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "name": {
+                                                                "type": "string",
+                                                                "example": "Empresa ABC"
+                                                            },
+                                                            "state": {
+                                                                "type": "string",
+                                                                "example": "ACTIVO"
+                                                            },
+                                                            "prelation_order": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/clients": {
+            "get": {
+                "tags": [
+                    "Clientes"
+                ],
+                "summary": "Listar clientes",
+                "description": "Obtiene el listado paginado de clientes",
+                "operationId": "getClientsList",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Elementos por página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Clientes obtenidos correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Clientes obtenidos correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 5
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "example": 15
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 75
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "name": {
+                                                                "type": "string",
+                                                                "example": "Juan Pérez"
+                                                            },
+                                                            "ci": {
+                                                                "type": "string",
+                                                                "example": "1712345678"
+                                                            },
+                                                            "type": {
+                                                                "type": "string",
+                                                                "example": "natural"
+                                                            },
+                                                            "gender": {
+                                                                "type": "string",
+                                                                "example": "M"
+                                                            },
+                                                            "civil_status": {
+                                                                "type": "string",
+                                                                "example": "soltero"
+                                                            },
+                                                            "economic_activity": {
+                                                                "type": "string",
+                                                                "example": "Comerciante"
+                                                            },
+                                                            "created_at": {
+                                                                "type": "string",
+                                                                "example": "2024-01-15T10:30:00Z"
+                                                            },
+                                                            "updated_at": {
+                                                                "type": "string",
+                                                                "example": "2024-01-15T10:30:00Z"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Clientes"
+                ],
+                "summary": "Crear cliente",
+                "description": "Crea un nuevo cliente en el sistema",
+                "operationId": "storeClient",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "ci"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "description": "Nombre completo del cliente",
+                                        "type": "string",
+                                        "maxLength": 255,
+                                        "example": "Juan Pérez"
+                                    },
+                                    "ci": {
+                                        "description": "Cédula o RUC del cliente (único)",
+                                        "type": "string",
+                                        "maxLength": 20,
+                                        "example": "1712345678"
+                                    },
+                                    "type": {
+                                        "description": "Tipo de persona",
+                                        "type": "string",
+                                        "enum": [
+                                            "natural",
+                                            "juridica"
+                                        ],
+                                        "example": "natural"
+                                    },
+                                    "gender": {
+                                        "description": "Género del cliente",
+                                        "type": "string",
+                                        "enum": [
+                                            "M",
+                                            "F"
+                                        ],
+                                        "example": "M"
+                                    },
+                                    "civil_status": {
+                                        "description": "Estado civil",
+                                        "type": "string",
+                                        "enum": [
+                                            "soltero",
+                                            "casado",
+                                            "divorciado",
+                                            "viudo",
+                                            "union_libre"
+                                        ],
+                                        "example": "soltero"
+                                    },
+                                    "economic_activity": {
+                                        "description": "Actividad económica",
+                                        "type": "string",
+                                        "maxLength": 255,
+                                        "example": "Comerciante"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Cliente creado exitosamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cliente creado exitosamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Juan Pérez"
+                                                },
+                                                "ci": {
+                                                    "type": "string",
+                                                    "example": "1712345678"
+                                                },
+                                                "type": {
+                                                    "type": "string",
+                                                    "example": "natural"
+                                                },
+                                                "gender": {
+                                                    "type": "string",
+                                                    "example": "M"
+                                                },
+                                                "civil_status": {
+                                                    "type": "string",
+                                                    "example": "soltero"
+                                                },
+                                                "economic_activity": {
+                                                    "type": "string",
+                                                    "example": "Comerciante"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "example": "2024-01-15T10:30:00Z"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "example": "2024-01-15T10:30:00Z"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error de validación"
+                                        },
+                                        "errors": {
+                                            "properties": {
+                                                "name": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "El nombre es obligatorio."
+                                                    }
+                                                },
+                                                "ci": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "La cédula ya existe."
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/clients/{id}": {
+            "get": {
+                "tags": [
+                    "Clientes"
+                ],
+                "summary": "Obtener cliente",
+                "description": "Obtiene los datos de un cliente específico",
+                "operationId": "showClient",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del cliente",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cliente obtenido correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cliente obtenido correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Juan Pérez"
+                                                },
+                                                "ci": {
+                                                    "type": "string",
+                                                    "example": "1712345678"
+                                                },
+                                                "type": {
+                                                    "type": "string",
+                                                    "example": "natural"
+                                                },
+                                                "gender": {
+                                                    "type": "string",
+                                                    "example": "M"
+                                                },
+                                                "civil_status": {
+                                                    "type": "string",
+                                                    "example": "soltero"
+                                                },
+                                                "economic_activity": {
+                                                    "type": "string",
+                                                    "example": "Comerciante"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "example": "2024-01-15T10:30:00Z"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "example": "2024-01-15T10:30:00Z"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "404": {
+                        "description": "Cliente no encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Clientes"
+                ],
+                "summary": "Actualizar cliente",
+                "description": "Actualiza los datos de un cliente existente",
+                "operationId": "updateClient",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del cliente",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "description": "Nombre completo del cliente",
+                                        "type": "string",
+                                        "maxLength": 255,
+                                        "example": "Juan Pérez"
+                                    },
+                                    "ci": {
+                                        "description": "Cédula o RUC del cliente",
+                                        "type": "string",
+                                        "maxLength": 20,
+                                        "example": "1712345678"
+                                    },
+                                    "type": {
+                                        "description": "Tipo de persona",
+                                        "type": "string",
+                                        "enum": [
+                                            "natural",
+                                            "juridica"
+                                        ],
+                                        "example": "natural"
+                                    },
+                                    "gender": {
+                                        "description": "Género del cliente",
+                                        "type": "string",
+                                        "enum": [
+                                            "M",
+                                            "F"
+                                        ],
+                                        "example": "M"
+                                    },
+                                    "civil_status": {
+                                        "description": "Estado civil",
+                                        "type": "string",
+                                        "enum": [
+                                            "soltero",
+                                            "casado",
+                                            "divorciado",
+                                            "viudo",
+                                            "union_libre"
+                                        ],
+                                        "example": "casado"
+                                    },
+                                    "economic_activity": {
+                                        "description": "Actividad económica",
+                                        "type": "string",
+                                        "maxLength": 255,
+                                        "example": "Comerciante"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cliente actualizado exitosamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Cliente actualizado exitosamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Juan Pérez"
+                                                },
+                                                "ci": {
+                                                    "type": "string",
+                                                    "example": "1712345678"
+                                                },
+                                                "type": {
+                                                    "type": "string",
+                                                    "example": "natural"
+                                                },
+                                                "gender": {
+                                                    "type": "string",
+                                                    "example": "M"
+                                                },
+                                                "civil_status": {
+                                                    "type": "string",
+                                                    "example": "casado"
+                                                },
+                                                "economic_activity": {
+                                                    "type": "string",
+                                                    "example": "Comerciante"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "example": "2024-01-15T10:30:00Z"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "example": "2024-01-15T12:00:00Z"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "404": {
+                        "description": "Cliente no encontrado"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/contacts": {
+            "get": {
+                "tags": [
+                    "Contactos"
+                ],
+                "summary": "Listar contactos",
+                "description": "Obtiene el listado paginado de contactos con filtros opcionales",
+                "operationId": "getContactsList",
+                "parameters": [
+                    {
+                        "name": "client_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del cliente",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "client_name",
+                        "in": "query",
+                        "description": "Filtrar por nombre del cliente (búsqueda parcial)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "client_ci",
+                        "in": "query",
+                        "description": "Filtrar por cédula del cliente",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "phone_number",
+                        "in": "query",
+                        "description": "Filtrar por número de teléfono (búsqueda parcial)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "phone_type",
+                        "in": "query",
+                        "description": "Filtrar por tipo de teléfono (CELULAR, FIJO, etc.)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "phone_status",
+                        "in": "query",
+                        "description": "Filtrar por estado del teléfono (ACTIVE, INACTIVE, etc.)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "order_by",
+                        "in": "query",
+                        "description": "Campo para ordenar los resultados",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order_dir",
+                        "in": "query",
+                        "description": "Dirección del ordenamiento",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "desc",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Elementos por página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contactos obtenidos correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Contactos obtenidos correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "name": {
+                                                                "type": "string",
+                                                                "example": "Juan Pérez"
+                                                            },
+                                                            "phone_number": {
+                                                                "type": "string",
+                                                                "example": "0991234567"
+                                                            },
+                                                            "phone_type": {
+                                                                "type": "string",
+                                                                "example": "CELULAR"
+                                                            },
+                                                            "phone_status": {
+                                                                "type": "string",
+                                                                "example": "ACTIVE"
+                                                            },
+                                                            "calls_effective": {
+                                                                "type": "integer",
+                                                                "example": 3
+                                                            },
+                                                            "calls_not_effective": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "client_id": {
+                                                                "type": "integer",
+                                                                "example": 5
+                                                            },
+                                                            "credit_id": {
+                                                                "type": "integer",
+                                                                "example": 2
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "example": 15
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 42
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Contactos"
+                ],
+                "summary": "Crear contacto",
+                "description": "Crea un nuevo contacto asociado a un cliente",
+                "operationId": "storeContact",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "phone_number",
+                                    "phone_type",
+                                    "client_id"
+                                ],
+                                "properties": {
+                                    "phone_number": {
+                                        "description": "Número de teléfono",
+                                        "type": "string",
+                                        "maxLength": 15,
+                                        "example": "0991234567"
+                                    },
+                                    "phone_type": {
+                                        "description": "Tipo de teléfono (CELULAR, FIJO, etc.)",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "example": "CELULAR"
+                                    },
+                                    "client_id": {
+                                        "description": "ID del cliente",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "name": {
+                                        "description": "Nombre del contacto",
+                                        "type": "string",
+                                        "maxLength": 255,
+                                        "example": "Juan Pérez"
+                                    },
+                                    "phone_status": {
+                                        "description": "Estado del teléfono",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "example": "ACTIVE"
+                                    },
+                                    "calls_effective": {
+                                        "description": "Cantidad de llamadas efectivas",
+                                        "type": "integer",
+                                        "example": 0
+                                    },
+                                    "calls_not_effective": {
+                                        "description": "Cantidad de llamadas no efectivas",
+                                        "type": "integer",
+                                        "example": 0
+                                    },
+                                    "credit_id": {
+                                        "description": "ID del crédito asociado (opcional)",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Contacto creado correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Contacto creado correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "phone_number": {
+                                                    "type": "string"
+                                                },
+                                                "phone_type": {
+                                                    "type": "string"
+                                                },
+                                                "phone_status": {
+                                                    "type": "string"
+                                                },
+                                                "calls_effective": {
+                                                    "type": "integer"
+                                                },
+                                                "calls_not_effective": {
+                                                    "type": "integer"
+                                                },
+                                                "client_id": {
+                                                    "type": "integer"
+                                                },
+                                                "credit_id": {
+                                                    "type": "integer"
+                                                },
+                                                "created_by": {
+                                                    "type": "integer"
+                                                },
+                                                "created_at": {
+                                                    "type": "string"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Error de validación"
+                                        },
+                                        "errors": {
+                                            "properties": {
+                                                "phone_number": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "El número de teléfono es obligatorio."
+                                                    }
+                                                },
+                                                "phone_type": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "El tipo de teléfono es obligatorio."
+                                                    }
+                                                },
+                                                "client_id": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "example": "El cliente es obligatorio."
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/contacts/{id}": {
+            "get": {
+                "tags": [
+                    "Contactos"
+                ],
+                "summary": "Obtener contacto",
+                "description": "Obtiene los datos de un contacto específico",
+                "operationId": "showContact",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del contacto",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contacto obtenido correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Contacto obtenido correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Juan Pérez"
+                                                },
+                                                "phone_number": {
+                                                    "type": "string",
+                                                    "example": "0991234567"
+                                                },
+                                                "phone_type": {
+                                                    "type": "string",
+                                                    "example": "CELULAR"
+                                                },
+                                                "phone_status": {
+                                                    "type": "string",
+                                                    "example": "ACTIVE"
+                                                },
+                                                "calls_effective": {
+                                                    "type": "integer",
+                                                    "example": 3
+                                                },
+                                                "calls_not_effective": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "client_id": {
+                                                    "type": "integer",
+                                                    "example": 5
+                                                },
+                                                "credit_id": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "example": "2024-01-15T10:30:00Z"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "example": "2024-01-15T10:30:00Z"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "404": {
+                        "description": "Contacto no encontrado"
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Contactos"
+                ],
+                "summary": "Actualizar contacto",
+                "description": "Actualiza un contacto existente",
+                "operationId": "updateContact",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del contacto",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "description": "Nombre del contacto",
+                                        "type": "string",
+                                        "maxLength": 255,
+                                        "example": "Juan Perez"
+                                    },
+                                    "phone_number": {
+                                        "description": "Numero de telefono",
+                                        "type": "string",
+                                        "maxLength": 15,
+                                        "example": "0991234567"
+                                    },
+                                    "phone_type": {
+                                        "description": "Tipo de telefono",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "example": "CELULAR"
+                                    },
+                                    "phone_status": {
+                                        "description": "Estado del telefono",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "example": "ACTIVE"
+                                    },
+                                    "calls_effective": {
+                                        "description": "Llamadas efectivas",
+                                        "type": "integer",
+                                        "example": 5
+                                    },
+                                    "calls_not_effective": {
+                                        "description": "Llamadas no efectivas",
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "client_id": {
+                                        "description": "ID del cliente",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "credit_id": {
+                                        "description": "ID del credito",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Contacto actualizado correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Contacto actualizado correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "phone_number": {
+                                                    "type": "string"
+                                                },
+                                                "phone_type": {
+                                                    "type": "string"
+                                                },
+                                                "phone_status": {
+                                                    "type": "string"
+                                                },
+                                                "calls_effective": {
+                                                    "type": "integer"
+                                                },
+                                                "calls_not_effective": {
+                                                    "type": "integer"
+                                                },
+                                                "client_id": {
+                                                    "type": "integer"
+                                                },
+                                                "client_name": {
+                                                    "type": "string"
+                                                },
+                                                "client_ci": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "404": {
+                        "description": "Contacto no encontrado"
+                    },
+                    "422": {
+                        "description": "Error de validacion"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Contactos"
+                ],
+                "summary": "Inactivar contacto",
+                "description": "Marca un contacto como INACTIVE (baja lógica)",
+                "operationId": "destroyContact",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID del contacto",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contacto inactivado correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Contacto inactivado correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "phone_number": {
+                                                    "type": "string",
+                                                    "example": "0991234567"
+                                                },
+                                                "phone_status": {
+                                                    "type": "string",
+                                                    "example": "INACTIVE"
+                                                },
+                                                "client_id": {
+                                                    "type": "integer",
+                                                    "example": 5
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "404": {
+                        "description": "Contacto no encontrado"
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/directions": {
+            "get": {
+                "tags": [
+                    "Direcciones"
+                ],
+                "summary": "Listar direcciones",
+                "description": "Obtiene listado de direcciones con filtros opcionales",
+                "operationId": "getDirectionsList",
+                "parameters": [
+                    {
+                        "name": "client_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del cliente",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "client_name",
+                        "in": "query",
+                        "description": "Filtrar por nombre del cliente",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "client_ci",
+                        "in": "query",
+                        "description": "Filtrar por CI del cliente",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "Filtrar por tipo (DOMICILIO, TRABAJO, etc.)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "province",
+                        "in": "query",
+                        "description": "Filtrar por provincia",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "canton",
+                        "in": "query",
+                        "description": "Filtrar por canton",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Elementos por pagina",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de direcciones obtenida correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Direcciones obtenidas correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "client_id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "direction": {
+                                                                "type": "string"
+                                                            },
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "province": {
+                                                                "type": "string"
+                                                            },
+                                                            "canton": {
+                                                                "type": "string"
+                                                            },
+                                                            "parish": {
+                                                                "type": "string"
+                                                            },
+                                                            "neighborhood": {
+                                                                "type": "string"
+                                                            },
+                                                            "latitude": {
+                                                                "type": "string"
+                                                            },
+                                                            "longitude": {
+                                                                "type": "string"
+                                                            },
+                                                            "client_name": {
+                                                                "type": "string"
+                                                            },
+                                                            "client_ci": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Direcciones"
+                ],
+                "summary": "Crear direccion",
+                "description": "Crea una nueva direccion asociada a un cliente",
+                "operationId": "storeDirection",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "client_id",
+                                    "direction",
+                                    "type"
+                                ],
+                                "properties": {
+                                    "client_id": {
+                                        "description": "ID del cliente",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "address": {
+                                        "description": "Direccion completa",
+                                        "type": "string",
+                                        "maxLength": 500,
+                                        "example": "Av. Principal 123"
+                                    },
+                                    "type": {
+                                        "description": "Tipo de direccion (DOMICILIO, TRABAJO, etc.)",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "example": "DOMICILIO"
+                                    },
+                                    "province": {
+                                        "description": "Provincia",
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "example": "Pichincha"
+                                    },
+                                    "canton": {
+                                        "description": "Canton",
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "example": "Quito"
+                                    },
+                                    "parish": {
+                                        "description": "Parroquia",
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "example": "La Mariscal"
+                                    },
+                                    "neighborhood": {
+                                        "description": "Barrio",
+                                        "type": "string",
+                                        "maxLength": 255,
+                                        "example": "Centro Norte"
+                                    },
+                                    "latitude": {
+                                        "description": "Latitud",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "example": "-0.1807"
+                                    },
+                                    "longitude": {
+                                        "description": "Longitud",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "example": "-78.4678"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Direccion creada correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Direccion creada correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "client_id": {
+                                                    "type": "integer"
+                                                },
+                                                "address": {
+                                                    "type": "string"
+                                                },
+                                                "type": {
+                                                    "type": "string"
+                                                },
+                                                "province": {
+                                                    "type": "string"
+                                                },
+                                                "canton": {
+                                                    "type": "string"
+                                                },
+                                                "parish": {
+                                                    "type": "string"
+                                                },
+                                                "neighborhood": {
+                                                    "type": "string"
+                                                },
+                                                "latitude": {
+                                                    "type": "string"
+                                                },
+                                                "longitude": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "422": {
+                        "description": "Error de validacion"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/directions/{id}": {
+            "get": {
+                "tags": [
+                    "Direcciones"
+                ],
+                "summary": "Obtener dirección",
+                "description": "Obtiene los datos de una dirección específica",
+                "operationId": "showDirection",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la dirección",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dirección obtenida correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Direccion obtenida correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "client_id": {
+                                                    "type": "integer",
+                                                    "example": 5
+                                                },
+                                                "direction": {
+                                                    "type": "string",
+                                                    "example": "Av. Principal 123"
+                                                },
+                                                "type": {
+                                                    "type": "string",
+                                                    "example": "DOMICILIO"
+                                                },
+                                                "province": {
+                                                    "type": "string",
+                                                    "example": "Pichincha"
+                                                },
+                                                "canton": {
+                                                    "type": "string",
+                                                    "example": "Quito"
+                                                },
+                                                "parish": {
+                                                    "type": "string",
+                                                    "example": "La Mariscal"
+                                                },
+                                                "neighborhood": {
+                                                    "type": "string",
+                                                    "example": "Centro Norte"
+                                                },
+                                                "latitude": {
+                                                    "type": "string",
+                                                    "example": "-0.1807"
+                                                },
+                                                "longitude": {
+                                                    "type": "string",
+                                                    "example": "-78.4678"
+                                                },
+                                                "client_name": {
+                                                    "type": "string",
+                                                    "example": "Juan Pérez"
+                                                },
+                                                "client_ci": {
+                                                    "type": "string",
+                                                    "example": "1712345678"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "example": "2024-01-15T10:30:00Z"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "example": "2024-01-15T10:30:00Z"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "404": {
+                        "description": "Dirección no encontrada"
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Direcciones"
+                ],
+                "summary": "Actualizar dirección",
+                "description": "Actualiza los datos de una dirección existente",
+                "operationId": "updateDirection",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la dirección",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "client_id": {
+                                        "description": "ID del cliente",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "direction": {
+                                        "description": "Dirección completa",
+                                        "type": "string",
+                                        "maxLength": 500,
+                                        "example": "Av. Secundaria 456"
+                                    },
+                                    "type": {
+                                        "description": "Tipo de dirección (DOMICILIO, TRABAJO, etc.)",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "example": "TRABAJO"
+                                    },
+                                    "province": {
+                                        "description": "Provincia",
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "example": "Pichincha"
+                                    },
+                                    "canton": {
+                                        "description": "Cantón",
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "example": "Quito"
+                                    },
+                                    "parish": {
+                                        "description": "Parroquia",
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "example": "Iñaquito"
+                                    },
+                                    "neighborhood": {
+                                        "description": "Barrio",
+                                        "type": "string",
+                                        "maxLength": 255,
+                                        "example": "La Carolina"
+                                    },
+                                    "latitude": {
+                                        "description": "Latitud",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "example": "-0.1960"
+                                    },
+                                    "longitude": {
+                                        "description": "Longitud",
+                                        "type": "string",
+                                        "maxLength": 50,
+                                        "example": "-78.4894"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Dirección actualizada correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Direccion actualizada correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "client_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "direction": {
+                                                    "type": "string",
+                                                    "example": "Av. Secundaria 456"
+                                                },
+                                                "type": {
+                                                    "type": "string",
+                                                    "example": "TRABAJO"
+                                                },
+                                                "province": {
+                                                    "type": "string",
+                                                    "example": "Pichincha"
+                                                },
+                                                "canton": {
+                                                    "type": "string",
+                                                    "example": "Quito"
+                                                },
+                                                "parish": {
+                                                    "type": "string",
+                                                    "example": "Iñaquito"
+                                                },
+                                                "neighborhood": {
+                                                    "type": "string",
+                                                    "example": "La Carolina"
+                                                },
+                                                "latitude": {
+                                                    "type": "string",
+                                                    "example": "-0.1960"
+                                                },
+                                                "longitude": {
+                                                    "type": "string",
+                                                    "example": "-78.4894"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "404": {
+                        "description": "Dirección no encontrada"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Direcciones"
+                ],
+                "summary": "Eliminar dirección",
+                "description": "Elimina permanentemente una dirección del sistema",
+                "operationId": "destroyDirection",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la dirección",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dirección eliminada correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Direccion eliminada correctamente"
+                                        },
+                                        "data": {
+                                            "type": "null",
+                                            "example": null
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "404": {
+                        "description": "Dirección no encontrada"
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/exports/overdue-credits": {
+            "get": {
+                "tags": [
+                    "Exportaciones"
+                ],
+                "summary": "Exportar créditos vencidos con oferta de pago",
+                "description": "Exporta créditos vencidos >110 días, >$1500, >4 cuotas, con OFERTA DE PAGO en ene/feb y pagos en últimos 3 meses",
+                "operationId": "exportOverdueCredits",
+                "parameters": [
+                    {
+                        "name": "business_id",
+                        "in": "query",
+                        "description": "ID de la empresa",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Archivo Excel descargado"
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/field-trips": {
+            "get": {
+                "tags": [
+                    "Visitas de Campo"
+                ],
+                "summary": "Listar visitas de campo",
+                "description": "Obtiene créditos con estado de VISITA CAMPO o cuya última gestión sea VISITA CAMPO",
+                "operationId": "getFieldTripsList",
+                "parameters": [
+                    {
+                        "name": "business_id",
+                        "in": "query",
+                        "description": "ID de la empresa",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "description": "ID del usuario",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "collection_state",
+                        "in": "query",
+                        "description": "Estado de cobranza (puede ser un valor o lista separada por comas)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "Vencido,Castigado"
+                        }
+                    },
+                    {
+                        "name": "agencies",
+                        "in": "query",
+                        "description": "Agencias (puede ser un valor o lista separada por comas)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "QUITO,GUAYAQUIL"
+                        }
+                    },
+                    {
+                        "name": "days_past_due_min",
+                        "in": "query",
+                        "description": "Días de mora mínimo",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "days_past_due_max",
+                        "in": "query",
+                        "description": "Días de mora máximo",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "total_amount_min",
+                        "in": "query",
+                        "description": "Monto total mínimo",
+                        "required": false,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "total_amount_max",
+                        "in": "query",
+                        "description": "Monto total máximo",
+                        "required": false,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "neighborhood",
+                        "in": "query",
+                        "description": "Filtrar por barrio (puede ser un valor o lista separada por comas)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "COLINAS LOJANAS,CHONTACRUZ"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de visitas de campo obtenida correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Visitas de campo obtenidas correctamente"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "field_trip_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "days_past_due": {
+                                                        "type": "integer"
+                                                    },
+                                                    "collection_state": {
+                                                        "type": "string"
+                                                    },
+                                                    "management_tray": {
+                                                        "type": "string"
+                                                    },
+                                                    "agency": {
+                                                        "type": "string"
+                                                    },
+                                                    "sync_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "amount": {
+                                                        "type": "number"
+                                                    },
+                                                    "address": {
+                                                        "type": "string"
+                                                    },
+                                                    "campain_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "clients": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "ci": {
+                                                                    "type": "string"
+                                                                },
+                                                                "type": {
+                                                                    "type": "string"
+                                                                },
+                                                                "directions": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "properties": {
+                                                                            "id": {
+                                                                                "type": "integer"
+                                                                            },
+                                                                            "client_id": {
+                                                                                "type": "integer"
+                                                                            },
+                                                                            "type": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "address": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "province": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "canton": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "parish": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "neighborhood": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "latitude": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "longitude": {
+                                                                                "type": "string"
+                                                                            }
+                                                                        },
+                                                                        "type": "object"
+                                                                    }
+                                                                },
+                                                                "contacts": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "properties": {
+                                                                            "id": {
+                                                                                "type": "integer"
+                                                                            },
+                                                                            "client_id": {
+                                                                                "type": "integer"
+                                                                            },
+                                                                            "name": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "phone_number": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "type": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "relationship": {
+                                                                                "type": "string"
+                                                                            }
+                                                                        },
+                                                                        "type": "object"
+                                                                    }
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "managements": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "credit_id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "user_name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "state": {
+                                                                    "type": "string"
+                                                                },
+                                                                "substate": {
+                                                                    "type": "string"
+                                                                },
+                                                                "promise_date": {
+                                                                    "type": "string"
+                                                                },
+                                                                "observation": {
+                                                                    "type": "string"
+                                                                },
+                                                                "client_name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "type": {
+                                                                    "type": "string",
+                                                                    "example": "field_visit"
+                                                                },
+                                                                "created_at": {
+                                                                    "type": "string"
+                                                                },
+                                                                "updated_at": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "payments": {
+                                                        "description": "Pagos del crédito en los últimos 12 meses",
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "payment_reference": {
+                                                                    "type": "string"
+                                                                },
+                                                                "payment_value": {
+                                                                    "type": "number"
+                                                                },
+                                                                "payment_date": {
+                                                                    "type": "string",
+                                                                    "format": "date"
+                                                                },
+                                                                "payment_type": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    },
+                    "422": {
+                        "description": "Error de validación - Faltan parámetros requeridos"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/request-field-trips/{creditId}": {
+            "patch": {
+                "tags": [
+                    "Visitas de Campo"
+                ],
+                "summary": "Solicitar visita de campo",
+                "description": "Cambia el management_tray a GESTIONADO y el management_status a SOLICITADO VISITA CAMPO",
+                "operationId": "requestFieldTrip",
+                "parameters": [
+                    {
+                        "name": "creditId",
+                        "in": "path",
+                        "description": "ID del crédito",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Visita de campo solicitada correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Visita de campo solicitada correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "credit_id": {
+                                                    "type": "integer"
+                                                },
+                                                "management_tray": {
+                                                    "type": "string",
+                                                    "example": "GESTIONADO"
+                                                },
+                                                "management_status": {
+                                                    "type": "string",
+                                                    "example": "SOLICITADO VISITA CAMPO"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Crédito no encontrado"
+                    },
+                    "500": {
+                        "description": "Error interno del servidor"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/gps-points": {
+            "get": {
+                "tags": [
+                    "Puntos GPS"
+                ],
+                "summary": "Listar puntos GPS",
+                "description": "Obtiene una lista paginada de puntos GPS con filtros opcionales. Puede agrupar por type_status.",
+                "operationId": "getGpsPointsList",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Número de puntos GPS por página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "user_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del usuario",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "type_status",
+                        "in": "query",
+                        "description": "Filtrar por tipo de estado",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "description": "Fecha inicial del rango (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "description": "Fecha final del rango (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "group_by_type_status",
+                        "in": "query",
+                        "description": "Agrupar resultados por type_status",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    {
+                        "name": "order_by",
+                        "in": "query",
+                        "description": "Campo para ordenar",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "recorded_at"
+                        }
+                    },
+                    {
+                        "name": "order_dir",
+                        "in": "query",
+                        "description": "Dirección del ordenamiento",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "desc",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de puntos GPS obtenida correctamente. Si group_by_type_status=true, retorna datos agrupados con locations array.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Puntos GPS obtenidos correctamente"
+                                        },
+                                        "data": {
+                                            "description": "Respuesta paginada (sin group_by_type_status) o array agrupado (con group_by_type_status=true)",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "user_id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "latitude": {
+                                                                "type": "number",
+                                                                "format": "float"
+                                                            },
+                                                            "longitude": {
+                                                                "type": "number",
+                                                                "format": "float"
+                                                            },
+                                                            "recorded_at": {
+                                                                "type": "string",
+                                                                "format": "date-time"
+                                                            },
+                                                            "accuracy": {
+                                                                "type": "string"
+                                                            },
+                                                            "battery_percentage": {
+                                                                "type": "string"
+                                                            },
+                                                            "type_status": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error al obtener puntos GPS"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Puntos GPS"
+                ],
+                "summary": "Crear un nuevo punto GPS",
+                "description": "Crea un nuevo registro de punto GPS con coordenadas y metadatos",
+                "operationId": "createGpsPoint",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "latitude",
+                                    "longitude",
+                                    "recorded_at"
+                                ],
+                                "properties": {
+                                    "latitude": {
+                                        "description": "Latitud (-90 a 90)",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": -17.7833
+                                    },
+                                    "longitude": {
+                                        "description": "Longitud (-180 a 180)",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": -63.1821
+                                    },
+                                    "recorded_at": {
+                                        "description": "Fecha y hora del registro",
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2026-01-27T10:30:00Z"
+                                    },
+                                    "accuracy": {
+                                        "description": "Precisión del GPS",
+                                        "type": "string",
+                                        "example": "10m"
+                                    },
+                                    "battery_percentage": {
+                                        "description": "Porcentaje de batería",
+                                        "type": "string",
+                                        "example": "85%"
+                                    },
+                                    "type_status": {
+                                        "description": "Tipo de estado",
+                                        "type": "string",
+                                        "example": "ACTIVE"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Punto GPS creado correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Punto GPS creado correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "user_id": {
+                                                    "type": "integer"
+                                                },
+                                                "latitude": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                },
+                                                "longitude": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                },
+                                                "recorded_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "accuracy": {
+                                                    "type": "string"
+                                                },
+                                                "battery_percentage": {
+                                                    "type": "string"
+                                                },
+                                                "type_status": {
+                                                    "type": "string"
+                                                },
+                                                "created_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "updated_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    },
+                    "500": {
+                        "description": "Error al crear punto GPS"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/login": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Iniciar sesión",
+                "description": "Autentica un usuario y retorna un token de acceso",
+                "operationId": "loginUser",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "username",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "username": {
+                                        "type": "string",
+                                        "example": "admin"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Inicio de sesión exitoso",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Inicio de sesión exitoso"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "token": {
+                                                    "type": "string",
+                                                    "example": "1|abcd1234efgh5678..."
+                                                },
+                                                "user": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "username": {
+                                                            "type": "string",
+                                                            "example": "admin"
+                                                        },
+                                                        "name": {
+                                                            "type": "string",
+                                                            "example": "Administrador"
+                                                        },
+                                                        "email": {
+                                                            "type": "string",
+                                                            "example": "admin@example.com"
+                                                        },
+                                                        "extension": {
+                                                            "type": "string",
+                                                            "example": "100"
+                                                        },
+                                                        "role": {
+                                                            "type": "string",
+                                                            "example": "admin"
+                                                        },
+                                                        "phone": {
+                                                            "type": "string",
+                                                            "example": "0999999999"
+                                                        },
+                                                        "permission": {
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Credenciales incorrectas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Credenciales incorrectas"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    },
+                    "500": {
+                        "description": "Error al iniciar sesión"
+                    }
+                }
+            }
+        },
+        "/api/logout": {
+            "post": {
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Cerrar sesión",
+                "description": "Cierra la sesión del usuario actual y elimina su token de acceso",
+                "operationId": "logoutUser",
+                "responses": {
+                    "200": {
+                        "description": "Sesión cerrada exitosamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Sesión cerrada exitosamente"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Usuario no autenticado"
+                    },
+                    "500": {
+                        "description": "Error al cerrar sesión"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/managements": {
+            "get": {
+                "tags": [
+                    "Gestiones"
+                ],
+                "summary": "Listar gestiones",
+                "description": "Obtiene una lista paginada de gestiones con filtros opcionales",
+                "operationId": "getManagementsList",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Número de gestiones por página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "description": "Filtrar por estado de la gestión",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "substate",
+                        "in": "query",
+                        "description": "Filtrar por subestado de la gestión",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "observation",
+                        "in": "query",
+                        "description": "Buscar en las observaciones",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "promise_date",
+                        "in": "query",
+                        "description": "Filtrar por fecha de promesa de pago (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "start_date",
+                        "in": "query",
+                        "description": "Fecha inicial del rango (YYYY-MM-DD o YYYY/MM/DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "end_date",
+                        "in": "query",
+                        "description": "Fecha final del rango (YYYY-MM-DD o YYYY/MM/DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "created_by",
+                        "in": "query",
+                        "description": "Filtrar por ID del usuario que creó la gestión",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "client_id",
+                        "in": "query",
+                        "description": "Filtrar por ID del cliente",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "client_name",
+                        "in": "query",
+                        "description": "Buscar por nombre del cliente",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "client_ci",
+                        "in": "query",
+                        "description": "Buscar por cédula del cliente",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "credit_id",
+                        "in": "query",
+                        "description": "Buscar por sync_id del crédito",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "campain_id",
+                        "in": "query",
+                        "description": "Filtrar por ID de campaña",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "order_by",
+                        "in": "query",
+                        "description": "Campo para ordenar",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "created_at"
+                        }
+                    },
+                    {
+                        "name": "order_dir",
+                        "in": "query",
+                        "description": "Dirección del ordenamiento",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "desc",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de gestiones obtenida correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Gestiones obtenidas correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "state": {
+                                                                "type": "string"
+                                                            },
+                                                            "substate": {
+                                                                "type": "string"
+                                                            },
+                                                            "observation": {
+                                                                "type": "string"
+                                                            },
+                                                            "promise_date": {
+                                                                "type": "string",
+                                                                "format": "date-time"
+                                                            },
+                                                            "promise_amount": {
+                                                                "type": "number"
+                                                            },
+                                                            "created_by": {
+                                                                "type": "integer"
+                                                            },
+                                                            "client_id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "credit_id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "campain_id": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Gestiones"
+                ],
+                "summary": "Crear una nueva gestión",
+                "description": "Crea una nueva gestión y actualiza el estado del crédito asociado",
+                "operationId": "createManagement",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "state",
+                                    "substate",
+                                    "created_by",
+                                    "credit_id"
+                                ],
+                                "properties": {
+                                    "state": {
+                                        "type": "string",
+                                        "example": "CONTACTADO"
+                                    },
+                                    "substate": {
+                                        "type": "string",
+                                        "example": "COMPROMISO_PAGO"
+                                    },
+                                    "observation": {
+                                        "type": "string",
+                                        "example": "Cliente acepta realizar pago"
+                                    },
+                                    "promise_date": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2026-01-25T10:00:00Z"
+                                    },
+                                    "promise_amount": {
+                                        "type": "number",
+                                        "example": 150.5
+                                    },
+                                    "created_by": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "call_id": {
+                                        "type": "integer",
+                                        "example": 100
+                                    },
+                                    "call_collection": {
+                                        "type": "string",
+                                        "example": "[1,2,3]"
+                                    },
+                                    "days_past_due": {
+                                        "type": "integer",
+                                        "example": 30
+                                    },
+                                    "paid_fees": {
+                                        "type": "integer",
+                                        "example": 5
+                                    },
+                                    "pending_fees": {
+                                        "type": "integer",
+                                        "example": 7
+                                    },
+                                    "managed_amount": {
+                                        "type": "number",
+                                        "example": 500
+                                    },
+                                    "nro_notification": {
+                                        "type": "string",
+                                        "example": "NOT-001"
+                                    },
+                                    "client_id": {
+                                        "type": "integer",
+                                        "example": 10
+                                    },
+                                    "credit_id": {
+                                        "type": "integer",
+                                        "example": 50
+                                    },
+                                    "campain_id": {
+                                        "type": "integer",
+                                        "example": 3
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Gestión creada correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Gestión creada correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "state": {
+                                                    "type": "string"
+                                                },
+                                                "substate": {
+                                                    "type": "string"
+                                                },
+                                                "observation": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación"
+                    },
+                    "500": {
+                        "description": "Error al crear la gestión"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/managements/{id}": {
+            "get": {
+                "tags": [
+                    "Gestiones"
+                ],
+                "summary": "Obtener una gestión específica",
+                "description": "Retorna los datos de una gestión por su ID con relaciones cargadas",
+                "operationId": "getManagementById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID de la gestión",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Gestión obtenida correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Gestión obtenida correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "state": {
+                                                    "type": "string"
+                                                },
+                                                "substate": {
+                                                    "type": "string"
+                                                },
+                                                "observation": {
+                                                    "type": "string"
+                                                },
+                                                "promise_date": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "promise_amount": {
+                                                    "type": "number"
+                                                },
+                                                "client": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "ci": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "credit": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "sync_id": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "campain": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "creator": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Gestión no encontrada"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/users": {
+            "get": {
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Listar usuarios",
+                "description": "Obtiene una lista paginada de usuarios con filtros opcionales",
+                "operationId": "getUsersList",
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Número de usuarios por página",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "agents",
+                        "in": "query",
+                        "description": "Filtrar solo agentes (excluye superadmin y query)",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "is_active",
+                        "in": "query",
+                        "description": "Filtrar por estado activo/inactivo",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista de usuarios obtenida correctamente",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Usuarios obtenidos correctamente"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "username": {
+                                                                "type": "string"
+                                                            },
+                                                            "extension": {
+                                                                "type": "string"
+                                                            },
+                                                            "phone": {
+                                                                "type": "string"
+                                                            },
+                                                            "role": {
+                                                                "type": "string"
+                                                            },
+                                                            "status": {
+                                                                "type": "string"
+                                                            },
+                                                            "is_active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ErrorResponse": {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Error message"
+                    },
+                    "data": {
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "ValidationErrorResponse": {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Validation error"
+                    },
+                    "data": {
+                        "properties": {
+                            "errors": {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "PaginationMeta": {
+                "properties": {
+                    "current_page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "per_page": {
+                        "type": "integer",
+                        "example": 15
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 100
+                    },
+                    "last_page": {
+                        "type": "integer",
+                        "example": 7
+                    },
+                    "from": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "to": {
+                        "type": "integer",
+                        "example": 15
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Ingrese el token de autenticación Bearer",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Agencias",
+            "description": "Agencias"
+        },
+        {
+            "name": "Empresas",
+            "description": "Empresas"
+        },
+        {
+            "name": "Clientes",
+            "description": "Clientes"
+        },
+        {
+            "name": "Contactos",
+            "description": "Contactos"
+        },
+        {
+            "name": "Direcciones",
+            "description": "Direcciones"
+        },
+        {
+            "name": "Exportaciones",
+            "description": "Exportaciones"
+        },
+        {
+            "name": "Visitas de Campo",
+            "description": "Visitas de Campo"
+        },
+        {
+            "name": "Puntos GPS",
+            "description": "Puntos GPS"
+        },
+        {
+            "name": "Autenticación",
+            "description": "Autenticación"
+        },
+        {
+            "name": "Gestiones",
+            "description": "Gestiones"
+        },
+        {
+            "name": "Usuarios",
+            "description": "Usuarios"
+        }
+    ]
+}

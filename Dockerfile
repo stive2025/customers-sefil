@@ -26,7 +26,7 @@ ENV PYTHONPATH=/app \
     PYTHONUNBUFFERED=1
 
 # ── Puerto expuesto (solo la API lo usa; el worker no escucha) ────────────────
-EXPOSE 8000
+EXPOSE 8002
 
 # CMD por defecto: la API. El worker lo sobreescribe en docker-compose.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002"]

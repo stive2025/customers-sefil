@@ -44,10 +44,10 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-S3F1L_Dev}@db:5432/${POSTGRES_DB:-centralizacion_db}
       API_KEYS: ${VALID_API_KEYS}
-    # Exponemos el puerto de forma LOCAL (127.0.0.1) para que el Nginx del servidor físico lo consuma.
+    # Exponemos solo en localhost para que el proxy del servidor físico lo consuma.
     ports:
-      - "127.0.0.1:8080:8000"
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+      - "127.0.0.1:8002:8002"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002
     depends_on:
       db:
         condition: service_healthy

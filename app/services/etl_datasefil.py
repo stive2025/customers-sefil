@@ -141,16 +141,20 @@ def _sync_phones(customer: Customer, contacts_raw: list[dict], db: Session) -> N
             phone_type = "MOBILE"
         elif "FIJO" in raw_type:
             phone_type = "HOME"
+        elif raw_type in ("ACTUALIZADO", "UPDATED", "OTRO"):
+            phone_type = None
         else:
             phone_type = raw_type or None
 
-        db.add(CollectionPhone(
+        phone = CollectionPhone(
             customer_id=customer.id,
             country_code="+593",
             phone_number=local_number,
             phone_type=phone_type,
             source="DATA SEFIL",
-        ))
+        )
+        db.add(phone)
+        customer.phones.append(phone)
         existing_numbers.add(local_number)
 
 
@@ -174,14 +178,16 @@ def _sync_addresses(customer: Customer, addresses_raw: list[dict], db: Session) 
         else:
             address_type = raw_type or None
 
-        db.add(CollectionAddress(
+        addr = CollectionAddress(
             customer_id=customer.id,
             address_line=address_line,
             province=standardize_text(addr_data.get("province")) or None,
             city=standardize_text(addr_data.get("city")) or None,
             address_type=address_type,
             source="DATA SEFIL",
-        ))
+        )
+        db.add(addr)
+        customer.addresses.append(addr)
         existing_lines.add(address_line)
 
 
@@ -197,12 +203,14 @@ def _sync_emails(customer: Customer, emails_raw: list[dict], db: Session) -> Non
         if not email_address or email_address in existing_addresses:
             continue
 
-        db.add(CollectionEmail(
+        email = CollectionEmail(
             customer_id=customer.id,
             email_address=email_address,
             is_active=bool(email_data.get("active", True)),
             source="DATA SEFIL",
-        ))
+        )
+        db.add(email)
+        customer.emails.append(email)
         existing_addresses.add(email_address)
 
 
@@ -273,6 +281,12 @@ def sync_datasefil_data(raw_data: list[dict], db: Session) -> SyncResult:
             )
             existing = db.execute(stmt).scalar_one_or_none()
 
+            # Combine emails array + top-level "email" single field
+            emails_raw = list(raw.get("emails", []))
+            top_email = raw.get("email")
+            if top_email:
+                emails_raw.append({"direction": top_email, "active": 1})
+
             if existing:
                 for attr in _MERGEABLE_FIELDS:
                     incoming = customer_fields.get(attr)
@@ -280,8 +294,8 @@ def sync_datasefil_data(raw_data: list[dict], db: Session) -> SyncResult:
                         setattr(existing, attr, incoming)
 
                 _sync_phones(existing, raw.get("contacts", []), db)
-                _sync_addresses(existing, raw.get("addresses", []), db)
-                _sync_emails(existing, raw.get("emails", []), db)
+                _sync_addresses(existing, raw.get("address", []), db)
+                _sync_emails(existing, emails_raw, db)
                 _sync_financial(existing, raw.get("salary"), db)
                 result.updated += 1
                 logger.info("Updated customer %s", identification)
@@ -296,8 +310,8 @@ def sync_datasefil_data(raw_data: list[dict], db: Session) -> SyncResult:
                 new_customer.financial_information = None
 
                 _sync_phones(new_customer, raw.get("contacts", []), db)
-                _sync_addresses(new_customer, raw.get("addresses", []), db)
-                _sync_emails(new_customer, raw.get("emails", []), db)
+                _sync_addresses(new_customer, raw.get("address", []), db)
+                _sync_emails(new_customer, emails_raw, db)
                 _sync_financial(new_customer, raw.get("salary"), db)
                 result.created += 1
                 logger.info("Created customer %s", identification)

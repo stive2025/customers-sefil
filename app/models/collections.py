@@ -84,7 +84,7 @@ class CollectionAddress(Base):
         index=True,
     )
     address_line: Mapped[str] = mapped_column(
-        String(250),
+        String(500),
         nullable=False,
         comment="Full street address including number",
     )

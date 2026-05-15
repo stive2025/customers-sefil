@@ -8,7 +8,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import get_db
 from app.core.security import get_api_key
@@ -188,7 +188,18 @@ def get_customer_full(
     db: Session = Depends(get_db),
 ) -> Customer:
     """Busca un Customer por ID y carga todas sus relaciones."""
-    cliente = db.get(Customer, customer_id)
+    stmt = (
+        select(Customer)
+        .where(Customer.id == customer_id)
+        .options(
+            selectinload(Customer.phones),
+            selectinload(Customer.addresses),
+            selectinload(Customer.emails),
+            selectinload(Customer.financial_information),
+            selectinload(Customer.equifax_queries),
+        )
+    )
+    cliente = db.execute(stmt).scalar_one_or_none()
     if not cliente:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

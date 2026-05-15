@@ -2,6 +2,9 @@ networks:
   mdm_network:
     driver: bridge
     name: centralizacion_net
+    ipam:
+      config:
+        - subnet: 192.168.200.0/24   # Evita colisión con 172.20.x.x (red LAN interna)
 
 volumes:
   postgres_data:
@@ -22,6 +25,8 @@ services:
       POSTGRES_DB:       ${POSTGRES_DB:-centralizacion_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"   # Worker nativo en Windows se conecta via localhost:5433
     networks:
       - mdm_network
     healthcheck:
@@ -66,6 +71,9 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-S3F1L_Dev}@db:5432/${POSTGRES_DB:-centralizacion_db}
       API_KEYS: ${VALID_API_KEYS}
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     command: python -m app.worker.scheduler
     depends_on:
       db:

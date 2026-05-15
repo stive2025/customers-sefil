@@ -39,8 +39,8 @@ class Customer(Base):
     )
 
     # --- Name ---
-    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(200), nullable=False)
 
     # --- Demographics ---
     gender: Mapped[Optional[str]] = mapped_column(
@@ -50,16 +50,16 @@ class Customer(Base):
         Date, nullable=True
     )
     birth_place: Mapped[Optional[str]] = mapped_column(
-        String(100), nullable=True
+        String(200), nullable=True
     )
     nationality: Mapped[Optional[str]] = mapped_column(
-        String(50), nullable=True, default="Ecuadorian"
+        String(100), nullable=True, default="Ecuadorian"
     )
     civil_status: Mapped[Optional[str]] = mapped_column(
         String(30), nullable=True, comment="SINGLE, MARRIED, DIVORCED, WIDOWED"
     )
     profession: Mapped[Optional[str]] = mapped_column(
-        String(100), nullable=True
+        String(500), nullable=True
     )
 
     # --- Timestamps ---

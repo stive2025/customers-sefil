@@ -5,7 +5,12 @@
       "Bash(Out-Null)",
       "Bash(New-Item -ItemType File -Force -Path \"c:\\\\Users\\\\Sistemas\\\\Desktop\\\\CASV_DOCS\\\\CentralizacionInformacion\\\\app\\\\worker\\\\__init__.py\")",
       "Bash(docker compose exec db psql -U postgres -d centralizacion_db -c ' *)",
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "Bash(.\\\\venv\\\\Scripts\\\\python.exe -c \"from app.services.etl_datasefil import _sync_relationships; from app.models.relationships import CustomerRelationship; print\\('imports OK'\\)\")",
+      "Bash(curl -s -X GET \"http://localhost:8002/api/v1/customers/1054/full\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('relationships key present:', 'relationships' in d\\); print\\('phones:', d.get\\('phones',[]\\)\\); print\\('relationships:', d.get\\('relationships', 'MISSING'\\)\\)\")",
+      "Bash(curl -s -X GET \"http://localhost:8002/api/v1/customers/1054\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d['identification']\\)\")"
     ]
   }
 }

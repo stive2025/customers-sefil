@@ -9,6 +9,7 @@ from app.models.customer import Customer
 from app.models.collections import CollectionPhone, CollectionAddress, CollectionEmail
 from app.models.financial import FinancialInformation
 from app.models.equifax import EquifaxQuery
+from app.models.relationships import CustomerRelationship
 
 __all__ = [
     "Base",
@@ -18,4 +19,5 @@ __all__ = [
     "CollectionEmail",
     "FinancialInformation",
     "EquifaxQuery",
+    "CustomerRelationship",
 ]

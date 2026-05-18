@@ -49,7 +49,7 @@ class CollectionPhoneResponse(CollectionPhoneBase):
 
 class CollectionAddressBase(BaseModel):
     address_line: str = Field(
-        ..., max_length=250, description="Full street address including number"
+        ..., max_length=500, description="Full street address including number"
     )
     province: Optional[str] = Field(None, max_length=100)
     city: Optional[str] = Field(None, max_length=100)

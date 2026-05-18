@@ -3,6 +3,7 @@ Punto de entrada principal de la aplicación FastAPI.
 Servicio de Centralización de Personas - CASV
 """
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routers import customers, sync
@@ -10,6 +11,8 @@ from app.api.routers import customers, sync
 # ---------------------------------------------------------------------------
 # Inicialización de la aplicación
 # ---------------------------------------------------------------------------
+API_ROOT_PATH = os.getenv("ROOT_PATH", "")
+
 
 app = FastAPI(
     title="Servicio de Centralización de Personas",
@@ -28,6 +31,7 @@ app = FastAPI(
     },
     docs_url="/docs",       # Swagger UI
     redoc_url="/redoc",     # ReDoc UI
+    root_path=API_ROOT_PATH,
 )
 
 # ---------------------------------------------------------------------------

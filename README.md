@@ -37,12 +37,14 @@ Internet / Red Interna
         │
    [ Worker ]          Scheduler — ETL polling periódico hacia sistemas externos
         │
-        ├──► Collecta API    (HTTPS — Bearer Token)
-        ├──► DATA SEFIL API  (HTTP interno — Bearer Token)
+        ├──► Collecta API    (HTTPS — Bearer Token) — /clients, /contacts, /directions
+        ├──► DATA SEFIL API  (HTTP interno — Bearer Token) — /clients
         └──► Leads MySQL     (conexión directa — SQLAlchemy secundario)
 ```
 
 La **API** nunca expone su puerto directamente al host; solo **Nginx** es accesible desde el exterior. El **Worker** corre como proceso independiente y comparte la misma imagen Docker que la API.
+
+> **Entorno Windows (desarrollo):** El Worker debe ejecutarse de forma **nativa** (no dentro de Docker) porque Docker Desktop en Windows no puede alcanzar hosts LAN de la red interna (`172.20.x.x`). La API y PostgreSQL sí corren en Docker. En producción Linux todos los servicios corren en Docker.
 
 ---
 
@@ -76,7 +78,7 @@ La **API** nunca expone su puerto directamente al host; solo **Nginx** es accesi
 │   │       └── sync.py              # Endpoint de ingesta externa (POST /sync/customer)
 │   ├── core/
 │   │   ├── database.py              # Engine, SessionLocal, Base
-│   │   └── security.py             # Validación de API Keys (X-API-Key)
+│   │   └── security.py              # Validación de API Keys (X-API-Key)
 │   ├── models/
 │   │   ├── base.py                  # DeclarativeBase compartida
 │   │   ├── customer.py              # Modelo Customer (entidad central)
@@ -91,11 +93,11 @@ La **API** nunca expone su puerto directamente al host; solo **Nginx** es accesi
 │   ├── services/
 │   │   ├── data_cleaning.py         # Funciones de limpieza y normalización (ETL)
 │   │   ├── unified_sync.py          # Servicio MDM hub — sync_external_customer()
-│   │   ├── etl_collecta.py          # ETL específico para Collecta (CollAPI)
-│   │   ├── etl_datasefil.py         # ETL específico para DATA SEFIL
-│   │   └── etl_leads.py             # ETL específico para Leads (MySQL externo)
+│   │   ├── etl_collecta.py          # ETL Collecta: clientes, contactos y direcciones
+│   │   ├── etl_datasefil.py         # ETL DATA SEFIL: clientes con paginación paralela
+│   │   └── etl_leads.py             # ETL Leads: crea y enriquece clientes desde MySQL
 │   ├── worker/
-│   │   └── scheduler.py             # Scheduled Polling — ejecuta ETLs periódicamente
+│   │   └── scheduler.py             # Scheduled Polling — 5 pasos de sync secuenciales
 │   └── main.py                      # Punto de entrada FastAPI
 ├── nginx/
 │   └── default.conf                 # Configuración Nginx (proxy + hardening)
@@ -118,9 +120,8 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=tu_password_seguro
 POSTGRES_DB=centralizacion_db
 
-# DATABASE_URL se sobreescribe en docker-compose para usar el hostname 'db'
-# En desarrollo local sin Docker, apunta a localhost:
-DATABASE_URL=postgresql+psycopg2://postgres:tu_password_seguro@localhost:5432/centralizacion_db
+# En desarrollo nativo Windows, usar puerto 5433 (5432 está reservado por Hyper-V/WSL2)
+DATABASE_URL=postgresql+psycopg2://postgres:tu_password_seguro@localhost:5433/centralizacion_db
 
 # ── MySQL externo (Leads) ────────────────────────────────────────────────────
 LEADS_DB_USER=root
@@ -130,8 +131,7 @@ LEADS_DB_PORT=3306
 LEADS_DB_NAME=lead_process
 
 # ── API Keys de acceso (seguridad M2M) ──────────────────────────────────────
-# Formato: "NombreSistema:clave_secreta" separados por comas
-VALID_API_KEYS="Collecta:sk_live_xxx,DATA_SEFIL:sk_live_yyy,Leads:sk_live_zzz"
+VALID_API_KEYS="sk_live_xxx,sk_live_yyy,sk_live_zzz"
 
 # ── ETL — URLs de sistemas fuente ────────────────────────────────────────────
 COLLECTA_API_URL=https://collapi.sefil.com.ec/public/api/clients
@@ -149,7 +149,7 @@ SYNC_SCHEDULE_2=13:30
 
 ## Ejecución
 
-### Con Docker (recomendado)
+### Con Docker (API + PostgreSQL)
 
 ```bash
 # Primera vez — construir imágenes y levantar
@@ -160,34 +160,39 @@ docker compose ps
 
 # Logs en tiempo real
 docker compose logs -f
-docker compose logs -f worker   # solo el scheduler
+docker compose logs -f api   # solo la API
 
 # Detener
 docker compose down
 ```
 
-### Desarrollo local (sin Docker)
+### Worker en Windows (nativo — requerido para acceder a red LAN)
 
-```bash
-# Instalar dependencias
-pip install -r requirements.txt
+El worker debe correr fuera de Docker para poder alcanzar los servidores internos (`172.20.1.102`, `172.20.1.105`):
 
-# Levantar la API
-uvicorn app.main:app --reload --port 8000
+```powershell
+# Activar entorno virtual
+.\venv\Scripts\Activate.ps1
 
-# Levantar el worker en otra terminal
+# Arrancar el scheduler (se ejecuta según SYNC_SCHEDULE_1/2)
 python -m app.worker.scheduler
+
+# O forzar una sincronización completa inmediata
+python -c "from app.worker.scheduler import run_all_syncs; run_all_syncs()"
+
+# Ejecutar solo un ETL específico
+python -c "from app.worker.scheduler import _run_leads; from app.core.database import SessionLocal; db = SessionLocal(); _run_leads(db); db.close()"
 ```
 
 ---
 
 ## Endpoints de la API
 
-La API es accesible en `http://localhost` (a través de Nginx en Docker) o en `http://localhost:8000` en desarrollo local.
+La API es accesible en `http://localhost:8002` (Docker) o `http://localhost:8000` en desarrollo local.
 
 La documentación interactiva está disponible en:
-- **Swagger UI**: `http://localhost/docs`
-- **ReDoc**: `http://localhost/redoc`
+- **Swagger UI**: `http://localhost:8002/docs`
+- **ReDoc**: `http://localhost:8002/redoc`
 
 ### Clientes (`/api/v1/customers`)
 
@@ -198,7 +203,7 @@ La documentación interactiva está disponible en:
 | `GET` | `/search?q=...` | Buscar por cédula exacta o nombre parcial (mín. 3 chars) |
 | `GET` | `/by/{identification}` | Obtener cliente por cédula o RUC |
 | `GET` | `/{customer_id}` | Obtener cliente por ID interno |
-| `GET` | `/{customer_id}/full` | Obtener cliente con todas sus relaciones |
+| `GET` | `/{customer_id}/full` | Obtener cliente con **todas** sus relaciones (eager load) |
 | `PATCH` | `/{customer_id}` | Actualización parcial de campos |
 | `DELETE` | `/{customer_id}` | Eliminar cliente (cascade) |
 
@@ -208,24 +213,6 @@ La documentación interactiva está disponible en:
 |---|---|---|
 | `POST` | `/customer` | Ingestar y fusionar un cliente desde un sistema externo |
 
-**Body de ejemplo para `/api/v1/sync/customer`:**
-
-```json
-{
-  "source": "Collecta",
-  "data": {
-    "ci": "0912345678",
-    "name": "PEREZ LOPEZ JUAN CARLOS",
-    "gender": "M",
-    "civil_status": "soltero",
-    "economic_activity": "COMERCIANTE",
-    "phones": [
-      { "phone_number": "0991234567", "phone_type": "MOBILE" }
-    ]
-  }
-}
-```
-
 ---
 
 ## Autenticación
@@ -233,16 +220,28 @@ La documentación interactiva está disponible en:
 Todos los endpoints (excepto `/` health check) requieren la cabecera `X-API-Key`.
 
 ```bash
-curl -H "X-API-Key: sk_live_xxx" http://localhost/api/v1/customers/
+curl -H "X-API-Key: sk_live_xxx" http://localhost:8002/api/v1/customers/
 ```
 
-Las claves se configuran en `VALID_API_KEYS` con el formato `NombreSistema:clave`. Si la cabecera está ausente o la clave no es válida, se retorna `401 Unauthorized`.
+Las claves se configuran en `VALID_API_KEYS` (lista separada por comas). Si la cabecera está ausente o la clave no es válida, se retorna `401 Unauthorized`.
 
 ---
 
 ## ETLs y Sincronización
 
-El sistema implementa un patrón de **Scheduled Polling (Batch CDC)**. El worker ejecuta los tres ETLs de forma secuencial a las horas configuradas en `SYNC_SCHEDULE_1` y `SYNC_SCHEDULE_2`.
+El sistema implementa un patrón de **Scheduled Polling (Batch CDC)**. El worker ejecuta **5 pasos secuenciales** a las horas configuradas en `SYNC_SCHEDULE_1` y `SYNC_SCHEDULE_2`.
+
+### Pasos del ciclo de sincronización
+
+| Paso | Fuente | Endpoint | Qué sincroniza |
+|---|---|---|---|
+| 1 | Collecta | `/public/api/clients` | Datos demográficos + teléfonos principales |
+| 2 | Collecta | `/public/api/contacts` | Teléfonos adicionales por cliente |
+| 3 | Collecta | `/public/api/directions` | Direcciones por cliente |
+| 4 | DATA SEFIL | `/api/clients` | Demográficos, teléfonos, emails, direcciones, salario |
+| 5 | Leads (MySQL) | tabla `entries` | Nombre, teléfono trabajo, email personal, dirección trabajo |
+
+Los pasos 1, 2, 3 y 4 usan **paginación paralela** (`ThreadPoolExecutor`, 5 workers, 100 registros/página) para reducir el tiempo de descarga.
 
 ### Lógica de fusión (Upsert/Merge)
 
@@ -250,14 +249,36 @@ La clave de búsqueda en todos los ETLs es el campo `identification` (cédula o 
 
 | Escenario | Comportamiento |
 |---|---|
-| Cliente nuevo | Se inserta `Customer` + todas sus relaciones |
-| Cliente existente | Se actualizan **solo** los campos demográficos que estén vacíos en la BD |
+| Cliente nuevo | Se crea el registro `Customer` con todos sus datos y contactos |
+| Cliente existente (demográficos) | Se actualizan **solo** los campos que estén vacíos en la BD (nunca sobreescribe) |
 | Contactos (teléfonos, emails, direcciones) | Se agregan los nuevos; los duplicados se ignoran por valor exacto |
+| Leads — cliente no existente | Se **crea** el cliente con nombre y contactos extraídos del JSON `attributes` |
 | `source` | Cada registro insertado lleva etiquetado el sistema de origen |
 
 ### Trazabilidad (Data Lineage)
 
-Cada registro en `collection_phones`, `collection_addresses` y `collection_emails` incluye el campo `source` que indica el sistema que lo aportó (`"Collecta"`, `"DATA SEFIL"`, `"Leads"`, `"Manual"`).
+Cada registro en `collection_phones`, `collection_addresses` y `collection_emails` incluye el campo `source` que indica el sistema que lo aportó:
+
+| Valor | Origen |
+|---|---|
+| `"Collecta"` | API Collecta (CollAPI) |
+| `"DATA SEFIL"` | API DATA SEFIL (incluye datos de datadiverservice) |
+| `"Leads"` | Base de datos MySQL de Leads |
+| `"Manual"` | Insertado directamente vía API REST |
+
+### Campos extraídos del JSON `attributes` de Leads
+
+| Campo JSON | Destino en BD |
+|---|---|
+| `PRIMER NOMBRE` + `SEGUNDO NOMBRE` | `Customer.first_name` |
+| `APELLIDO PATERNO` + `APELLIDO MATERNO` | `Customer.last_name` |
+| `TELEFONO TRABAJO` | `CollectionPhone` (tipo WORK) |
+| `TELEFONO CELULAR 1` / `TELEFONO CELULAR 2` | `CollectionPhone` (tipo MOBILE) |
+| `TELEFONO DOMICILIO` | `CollectionPhone` (tipo HOME) |
+| `EMAIL PERSONAL` | `CollectionEmail` |
+| `DIRECCION TRABAJO` + `PARROQUIA TRABAJO` | `CollectionAddress.address_line` (tipo WORK) |
+| `CANTON TRABAJO` | `CollectionAddress.city` |
+| `PROVINCIA TRABAJO` | `CollectionAddress.province` |
 
 ---
 
@@ -266,26 +287,35 @@ Cada registro en `collection_phones`, `collection_addresses` y `collection_email
 ```
 Customer (customers)
 │  identification  VARCHAR(13) UNIQUE   ← cédula o RUC
-│  first_name      VARCHAR(100)
-│  last_name       VARCHAR(100)
+│  first_name      VARCHAR(200)
+│  last_name       VARCHAR(200)
 │  gender          VARCHAR(20)          ← MALE | FEMALE | OTHER
 │  birth_date      DATE
-│  birth_place     VARCHAR(100)
-│  nationality     VARCHAR(50)
+│  birth_place     VARCHAR(200)
+│  nationality     VARCHAR(100)
 │  civil_status    VARCHAR(30)          ← SINGLE | MARRIED | DIVORCED | WIDOWED
-│  profession      VARCHAR(100)
+│  profession      VARCHAR(500)
 │
 ├── CollectionPhone (collection_phones)       [One-to-Many]
-│     phone_number, country_code, phone_type, source
+│     phone_number   VARCHAR(20)
+│     country_code   VARCHAR(5)         ← default "+593"
+│     phone_type     VARCHAR(20)        ← MOBILE | HOME | WORK | REFERENCE | ...
+│     source         VARCHAR(50)
 │
 ├── CollectionAddress (collection_addresses)  [One-to-Many]
-│     address_line, province, city, address_type, source
+│     address_line   VARCHAR(500)       ← largo para aceptar descripciones de Leads
+│     province       VARCHAR(100)
+│     city           VARCHAR(100)
+│     address_type   VARCHAR(30)        ← HOME | WORK | GUARANTOR | OTHER
+│     source         VARCHAR(50)
 │
 ├── CollectionEmail (collection_emails)       [One-to-Many]
-│     email_address, is_active, source
+│     email_address  VARCHAR(150)
+│     is_active      BOOLEAN
+│     source         VARCHAR(50)
 │
 ├── FinancialInformation (financial_information) [One-to-One]
-│     salary
+│     salary         NUMERIC
 │
 └── EquifaxQuery (equifax_queries)            [One-to-Many]
       (consultas al Buró de Crédito)
@@ -311,4 +341,9 @@ alembic history
 alembic downgrade -1
 ```
 
-> **Nota:** Cada vez que se añada un campo nuevo a un modelo (como `source` en las colecciones), es necesario generar y aplicar una migración antes de ejecutar los ETLs en producción.
+> **Nota:** Si Alembic reporta `Can't locate revision` al iniciar, la tabla `alembic_version` tiene una revisión huérfana. Corrección:
+> ```bash
+> docker compose exec db psql -U postgres -d centralizacion_db \
+>   -c "UPDATE alembic_version SET version_num = '<ultima_revision_valida>';"
+> alembic upgrade head
+> ```

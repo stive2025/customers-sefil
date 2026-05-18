@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.collections import CollectionAddress, CollectionEmail, CollectionPhone
 from app.models.customer import Customer
 from app.models.financial import FinancialInformation
+from app.models.relationships import CustomerRelationship
 from app.services.data_cleaning import (
     clean_civil_status,
     clean_date,
@@ -214,6 +215,44 @@ def _sync_emails(customer: Customer, emails_raw: list[dict], db: Session) -> Non
         existing_addresses.add(email_address)
 
 
+def _sync_relationships(customer: Customer, parents_raw: list[dict], db: Session) -> None:
+    """
+    Inserts family relationships from DATA SEFIL `parents` array.
+    Deduplication by (relationship_type, related_identification or related_name).
+    """
+    existing_keys = {
+        (r.relationship_type, r.related_identification or r.related_name)
+        for r in customer.relationships
+    }
+
+    for parent in parents_raw:
+        rel_type = str(parent.get("type", "")).upper().strip()
+        if not rel_type:
+            continue
+
+        related_id = clean_identification(parent.get("identification")) or None
+        related_name = standardize_text(parent.get("name")) or None
+        dedup_key = (rel_type, related_id or related_name)
+
+        if dedup_key in existing_keys:
+            continue
+
+        rel = CustomerRelationship(
+            customer_id=customer.id,
+            relationship_type=rel_type,
+            related_identification=related_id,
+            related_name=related_name,
+            related_birth_date=clean_date(parent.get("birth")),
+            related_gender=clean_gender(parent.get("gender")),
+            related_civil_status=clean_civil_status(parent.get("state_civil")),
+            related_death_date=clean_date(parent.get("death")) if parent.get("death") else None,
+            source="DATA SEFIL",
+        )
+        db.add(rel)
+        customer.relationships.append(rel)
+        existing_keys.add(dedup_key)
+
+
 def _sync_financial(customer: Customer, salary_raw: float | str | int | None, db: Session) -> None:
     """
     Creates or updates the One-to-One FinancialInformation record.
@@ -277,6 +316,7 @@ def sync_datasefil_data(raw_data: list[dict], db: Session) -> SyncResult:
                     selectinload(Customer.addresses),
                     selectinload(Customer.emails),
                     selectinload(Customer.financial_information),
+                    selectinload(Customer.relationships),
                 )
             )
             existing = db.execute(stmt).scalar_one_or_none()
@@ -297,6 +337,7 @@ def sync_datasefil_data(raw_data: list[dict], db: Session) -> SyncResult:
                 _sync_addresses(existing, raw.get("address", []), db)
                 _sync_emails(existing, emails_raw, db)
                 _sync_financial(existing, raw.get("salary"), db)
+                _sync_relationships(existing, raw.get("parents", []), db)
                 result.updated += 1
                 logger.info("Updated customer %s", identification)
 
@@ -308,11 +349,13 @@ def sync_datasefil_data(raw_data: list[dict], db: Session) -> SyncResult:
                 new_customer.addresses = []
                 new_customer.emails = []
                 new_customer.financial_information = None
+                new_customer.relationships = []
 
                 _sync_phones(new_customer, raw.get("contacts", []), db)
                 _sync_addresses(new_customer, raw.get("address", []), db)
                 _sync_emails(new_customer, emails_raw, db)
                 _sync_financial(new_customer, raw.get("salary"), db)
+                _sync_relationships(new_customer, raw.get("parents", []), db)
                 result.created += 1
                 logger.info("Created customer %s", identification)
 

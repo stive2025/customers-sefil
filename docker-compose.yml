@@ -51,7 +51,7 @@ services:
       API_KEYS: ${VALID_API_KEYS}
     ports:
       - "8002:8002"
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8002
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 
     depends_on:
       db:
         condition: service_healthy

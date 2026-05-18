@@ -119,6 +119,7 @@ class CustomerResponseFull(CustomerResponse):
     emails: List["CollectionEmailResponse"] = []
     financial_information: Optional["FinancialInformationResponse"] = None
     equifax_queries: List["EquifaxQueryResponse"] = []
+    relationships: List["CustomerRelationshipResponse"] = []
 
 
 # ---------------------------------------------------------------------------
@@ -132,5 +133,6 @@ from app.schemas.collections import (  # noqa: E402
 )
 from app.schemas.financial import FinancialInformationResponse  # noqa: E402
 from app.schemas.equifax import EquifaxQueryResponse  # noqa: E402
+from app.schemas.relationships import CustomerRelationshipResponse  # noqa: E402
 
 CustomerResponseFull.model_rebuild()

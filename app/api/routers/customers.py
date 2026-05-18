@@ -197,6 +197,7 @@ def get_customer_full(
             selectinload(Customer.emails),
             selectinload(Customer.financial_information),
             selectinload(Customer.equifax_queries),
+            selectinload(Customer.relationships),
         )
     )
     cliente = db.execute(stmt).scalar_one_or_none()

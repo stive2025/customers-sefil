@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.collections import CollectionAddress, CollectionEmail, CollectionPhone
     from app.models.equifax import EquifaxQuery
     from app.models.financial import FinancialInformation
+    from app.models.relationships import CustomerRelationship
 
 
 class Customer(Base):
@@ -98,6 +99,11 @@ class Customer(Base):
     )
     equifax_queries: Mapped[List["EquifaxQuery"]] = relationship(
         "EquifaxQuery",
+        back_populates="customer",
+        cascade="all, delete-orphan",
+    )
+    relationships: Mapped[List["CustomerRelationship"]] = relationship(
+        "CustomerRelationship",
         back_populates="customer",
         cascade="all, delete-orphan",
     )

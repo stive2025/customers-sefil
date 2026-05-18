@@ -1,0 +1,92 @@
+# docker-compose.prod.yml — Servidor Hostinger
+# Servicios: PostgreSQL + FastAPI + Nginx
+# El Worker NO vive aquí; corre en el servidor local de oficina.
+#
+# Uso:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml logs -f api
+
+networks:
+  mdm_network:
+    driver: bridge
+    name: centralizacion_net_prod
+
+volumes:
+  postgres_data:
+    name: centralizacion_postgres_data_prod
+
+services:
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Base de Datos PostgreSQL 15
+  # ────────────────────────────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: centralizacion_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB:       ${POSTGRES_DB:-centralizacion_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Puerto NO expuesto al host — solo accesible desde la red interna Docker
+    expose:
+      - "5432"
+    networks:
+      - mdm_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-centralizacion_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # API REST — FastAPI / Uvicorn
+  # ────────────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: centralizacion_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # La API se conecta a PostgreSQL en la red interna Docker
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-centralizacion_db}
+    # Puerto NO expuesto directamente; Nginx actúa de proxy
+    expose:
+      - "8002"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --workers 2
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mdm_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Nginx — Proxy inverso público
+  # ────────────────────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: centralizacion_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # Montar certificados SSL si se usa Let's Encrypt / Certbot:
+      # - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - mdm_network

@@ -1,17 +1,15 @@
 """
 ETL para la fuente de datos "Leads" (MySQL externo en 172.20.1.102).
 
-Lógica de extracción:
-  - Conecta a MySQL mediante un Engine secundario (credenciales desde env vars).
-  - Ejecuta un JOIN entre `leads` y `entries` filtrando por event = 'LEAD.UPDATED'.
-  - Del campo `attributes` (JSON) extrae: nombre, teléfono, email y dirección de trabajo.
+En la arquitectura híbrida este módulo ya NO escribe en PostgreSQL.
+Sigue conectándose a MySQL (fuente de datos local) para extraer los registros,
+los transforma en CustomerUpsertItem y los devuelve para que el Worker los
+envíe vía HTTP al endpoint POST /sync/bulk-upsert de Hostinger.
 
-Comportamiento de fusión:
-  - Cliente YA EXISTE en BD central → añade teléfono/email/dirección si son nuevos.
-  - Cliente NO EXISTE → lo crea con los datos del JSON y añade sus contactos.
-  - Deduplicación por phone_number, email_address y (address_line, city).
-  - Todos los registros llevan source="Leads".
-  - Commit único al final del lote (atómico).
+Lógica de extracción:
+  - Conecta a MySQL mediante un Engine (credenciales desde env vars).
+  - Ejecuta un JOIN entre `leads` y `entries` filtrando event = 'LEAD.UPDATED'.
+  - Del campo `attributes` (JSON) extrae: nombre, teléfono, email y dirección de trabajo.
 
 Tablas origen (MySQL):
   leads   → id, document (cédula)
@@ -20,7 +18,7 @@ Tablas origen (MySQL):
 Campos del JSON `attributes`:
   Nombre  : PRIMER NOMBRE, SEGUNDO NOMBRE, APELLIDO PATERNO, APELLIDO MATERNO
   Teléfono: TELEFONO TRABAJO, TELEFONO CELULAR 1/2, TELEFONO DOMICILIO
-  Email   : EMAIL PERSONAL
+  Email   : EMAIL PERSONAL, EMAIL TRABAJO, EMAIL
   Dirección: DIRECCION TRABAJO + PARROQUIA TRABAJO → address_line
              CANTON TRABAJO → city | PROVINCIA TRABAJO → province
 """
@@ -28,14 +26,10 @@ Campos del JSON `attributes`:
 import json
 import logging
 import os
-from dataclasses import dataclass, field
 
-from sqlalchemy import create_engine, select, text
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import create_engine, text
 
-from app.models.collections import CollectionAddress, CollectionEmail, CollectionPhone
-from app.models.customer import Customer
+from app.schemas.sync import AddressItem, CustomerUpsertItem, EmailItem, PhoneItem
 from app.services.data_cleaning import (
     clean_email,
     clean_identification,
@@ -47,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Conexión MySQL externa
+# MySQL connection
 # ---------------------------------------------------------------------------
 
 def _build_leads_url() -> str:
@@ -60,7 +54,7 @@ def _build_leads_url() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Mapeos de claves del JSON
+# JSON attribute maps
 # ---------------------------------------------------------------------------
 
 _PHONE_KEY_MAP: dict[str, str] = {
@@ -75,7 +69,7 @@ _EMAIL_KEYS: tuple[str, ...] = ("EMAIL PERSONAL", "EMAIL TRABAJO", "EMAIL")
 
 
 # ---------------------------------------------------------------------------
-# SQL de extracción
+# SQL
 # ---------------------------------------------------------------------------
 
 _EXTRACT_SQL = text("""
@@ -90,34 +84,14 @@ _EXTRACT_SQL = text("""
 
 
 # ---------------------------------------------------------------------------
-# Result container
-# ---------------------------------------------------------------------------
-
-@dataclass
-class SyncResult:
-    customers_created: int = 0
-    customers_updated: int = 0
-    phones_added: int = 0
-    emails_added: int = 0
-    addresses_added: int = 0
-    skipped: int = 0
-    errors: list[str] = field(default_factory=list)
-
-
-# ---------------------------------------------------------------------------
-# Extracción desde MySQL
+# Internal: fetch and group from MySQL
 # ---------------------------------------------------------------------------
 
 def _fetch_leads_data() -> dict[str, dict]:
     """
-    Abre MySQL, ejecuta el JOIN y devuelve:
-      {
-        identification: {
-          first_name, last_name,
-          phones: [...], emails: [...], addresses: [...]
-        }
-      }
-    Deduplicación interna para múltiples entries por lead.
+    Connect to MySQL, run the JOIN and return:
+      { identification: { first_name, last_name, phones, emails, addresses } }
+    Multiple entries per lead are merged (first-wins for name).
     """
     engine = create_engine(
         _build_leads_url(),
@@ -155,7 +129,7 @@ def _fetch_leads_data() -> dict[str, dict]:
             "_seen_addresses": set(),
         })
 
-        # — Nombre (primer entry con datos gana) —
+        # Name (first entry with data wins)
         if not entry["first_name"]:
             parts = [
                 standardize_text(attributes.get("PRIMER NOMBRE")),
@@ -174,7 +148,7 @@ def _fetch_leads_data() -> dict[str, dict]:
             if ln:
                 entry["last_name"] = ln
 
-        # — Teléfonos —
+        # Phones
         for key, phone_type in _PHONE_KEY_MAP.items():
             raw_number = attributes.get(key)
             if raw_number and str(raw_number).strip():
@@ -183,7 +157,7 @@ def _fetch_leads_data() -> dict[str, dict]:
                     entry["phones"].append({"phone_number": number, "phone_type": phone_type})
                     entry["_seen_phones"].add(number)
 
-        # — Email —
+        # Emails
         for email_key in _EMAIL_KEYS:
             raw_email = attributes.get(email_key)
             if raw_email and str(raw_email).strip():
@@ -192,13 +166,13 @@ def _fetch_leads_data() -> dict[str, dict]:
                     entry["emails"].append(addr)
                     entry["_seen_emails"].add(addr)
 
-        # — Dirección de trabajo —
+        # Work address
         parts = [
             standardize_text(attributes.get("DIRECCION TRABAJO")),
             standardize_text(attributes.get("PARROQUIA TRABAJO")),
         ]
         address_line = " ".join(filter(None, parts)) or None
-        city         = standardize_text(attributes.get("CANTON TRABAJO")) or None
+        city         = standardize_text(attributes.get("CANTON TRABAJO"))   or None
         province     = standardize_text(attributes.get("PROVINCIA TRABAJO")) or None
 
         if address_line:
@@ -212,7 +186,7 @@ def _fetch_leads_data() -> dict[str, dict]:
                 })
                 entry["_seen_addresses"].add(key_addr)
 
-    # Limpiar sets internos de dedup
+    # Remove internal dedup sets
     for entry in grouped.values():
         entry.pop("_seen_phones", None)
         entry.pop("_seen_emails", None)
@@ -222,177 +196,68 @@ def _fetch_leads_data() -> dict[str, dict]:
 
 
 # ---------------------------------------------------------------------------
-# Merge helpers
+# Public prepare function — returns CustomerUpsertItem list, no PostgreSQL needed
 # ---------------------------------------------------------------------------
 
-def _merge_phones(customer: Customer, phones: list[dict], db: Session) -> int:
-    existing = {p.phone_number for p in customer.phones}
-    added = 0
-    for item in phones:
-        local_number = clean_phone_number(item["phone_number"])
-        if not local_number or local_number in existing:
-            continue
-        phone = CollectionPhone(
-            customer_id=customer.id,
-            country_code="+593",
-            phone_number=local_number,
-            phone_type=item["phone_type"],
-            source="Leads",
-        )
-        db.add(phone)
-        customer.phones.append(phone)
-        existing.add(local_number)
-        added += 1
-    return added
-
-
-def _merge_emails(customer: Customer, raw_emails: list[str], db: Session) -> int:
-    existing = {e.email_address for e in customer.emails}
-    added = 0
-    for raw_addr in raw_emails:
-        email_address = clean_email(raw_addr)
-        if not email_address or email_address in existing:
-            continue
-        email = CollectionEmail(
-            customer_id=customer.id,
-            email_address=email_address,
-            is_active=True,
-            source="Leads",
-        )
-        db.add(email)
-        customer.emails.append(email)
-        existing.add(email_address)
-        added += 1
-    return added
-
-
-def _merge_addresses(customer: Customer, addresses: list[dict], db: Session) -> int:
-    existing = {(a.address_line, a.city) for a in customer.addresses}
-    added = 0
-    for addr_data in addresses:
-        key = (addr_data["address_line"], addr_data["city"])
-        if key in existing:
-            continue
-        addr = CollectionAddress(
-            customer_id=customer.id,
-            address_line=addr_data["address_line"],
-            city=addr_data["city"],
-            province=addr_data["province"],
-            address_type=addr_data["address_type"],
-            source="Leads",
-        )
-        db.add(addr)
-        customer.addresses.append(addr)
-        existing.add(key)
-        added += 1
-    return added
-
-
-# ---------------------------------------------------------------------------
-# ETL entry point
-# ---------------------------------------------------------------------------
-
-def sync_leads_data(db_central: Session) -> SyncResult:
+def prepare_leads_customers() -> list[CustomerUpsertItem]:
     """
-    Extrae datos de la BD MySQL "Leads" y los fusiona con la PostgreSQL centralizada.
-
-    - Clientes existentes: añade teléfonos, emails y direcciones nuevos.
-    - Clientes nuevos: los crea con los datos del JSON y añade sus contactos.
-    - Un único commit al final garantiza atomicidad sobre todo el lote.
+    Fetch leads from MySQL and return as a CustomerUpsertItem list.
+    Phone numbers and email addresses are cleaned before being embedded.
+    Records without a valid identification are silently dropped.
     """
-    result = SyncResult()
-
-    try:
-        leads_data = _fetch_leads_data()
-    except Exception as exc:
-        logger.error("Cannot extract data from Leads MySQL: %s", exc, exc_info=True)
-        result.errors.append(f"MySQL extraction error: {exc}")
-        return result
-
+    leads_data = _fetch_leads_data()
     logger.info("Leads extraction complete — %d unique identifications found.", len(leads_data))
 
+    result: list[CustomerUpsertItem] = []
+
     for identification, data in leads_data.items():
-        try:
-            stmt = (
-                select(Customer)
-                .where(Customer.identification == identification)
-                .options(
-                    selectinload(Customer.phones),
-                    selectinload(Customer.emails),
-                    selectinload(Customer.addresses),
-                )
+        # Build phones (apply clean_phone_number)
+        phones: list[PhoneItem] = []
+        seen_phones: set[str] = set()
+        for p in data["phones"]:
+            local_number = clean_phone_number(p["phone_number"])
+            if local_number and local_number not in seen_phones:
+                phones.append(PhoneItem(
+                    phone_number=local_number,
+                    phone_type=p["phone_type"],
+                    country_code="+593",
+                    source="Leads",
+                ))
+                seen_phones.add(local_number)
+
+        # Build emails (apply clean_email)
+        emails: list[EmailItem] = []
+        seen_emails: set[str] = set()
+        for raw_addr in data["emails"]:
+            email_address = clean_email(raw_addr)
+            if email_address and email_address not in seen_emails:
+                emails.append(EmailItem(
+                    email_address=email_address,
+                    is_active=True,
+                    source="Leads",
+                ))
+                seen_emails.add(email_address)
+
+        # Build addresses (already cleaned in _fetch_leads_data)
+        addresses: list[AddressItem] = [
+            AddressItem(
+                address_line=a["address_line"],
+                city=a["city"],
+                province=a["province"],
+                address_type=a["address_type"],
+                source="Leads",
             )
-            customer = db_central.execute(stmt).scalar_one_or_none()
+            for a in data["addresses"]
+        ]
 
-            if not customer:
-                # Crear cliente nuevo desde los datos del JSON
-                first_name = data.get("first_name")
-                last_name  = data.get("last_name") or ""
+        result.append(CustomerUpsertItem(
+            identification=identification,
+            first_name=data.get("first_name"),
+            last_name=data.get("last_name") or "",
+            phones=phones,
+            emails=emails,
+            addresses=addresses,
+        ))
 
-                if not first_name:
-                    logger.debug("No name for %s — skipping.", identification)
-                    result.skipped += 1
-                    continue
-
-                with db_central.begin_nested():
-                    new_customer = Customer(
-                        identification=identification,
-                        first_name=first_name,
-                        last_name=last_name,
-                    )
-                    db_central.add(new_customer)
-                    db_central.flush()
-                    new_customer.phones    = []
-                    new_customer.emails    = []
-                    new_customer.addresses = []
-
-                    phones_added    = _merge_phones(new_customer, data["phones"], db_central)
-                    emails_added    = _merge_emails(new_customer, data["emails"], db_central)
-                    addresses_added = _merge_addresses(new_customer, data["addresses"], db_central)
-
-                result.customers_created += 1
-                result.phones_added      += phones_added
-                result.emails_added      += emails_added
-                result.addresses_added   += addresses_added
-                logger.info(
-                    "Created customer %s (%s %s) — phones: +%d | emails: +%d | addresses: +%d",
-                    identification, first_name, last_name,
-                    phones_added, emails_added, addresses_added,
-                )
-
-            else:
-                phones_added    = _merge_phones(customer, data["phones"], db_central)
-                emails_added    = _merge_emails(customer, data["emails"], db_central)
-                addresses_added = _merge_addresses(customer, data["addresses"], db_central)
-
-                if phones_added or emails_added or addresses_added:
-                    result.phones_added      += phones_added
-                    result.emails_added      += emails_added
-                    result.addresses_added   += addresses_added
-                    result.customers_updated += 1
-                    logger.info(
-                        "Updated customer %s — phones: +%d | emails: +%d | addresses: +%d",
-                        identification, phones_added, emails_added, addresses_added,
-                    )
-
-        except IntegrityError:
-            db_central.rollback()
-            logger.warning("Duplicate identification %s — skipping.", identification)
-            result.skipped += 1
-        except Exception as exc:
-            result.errors.append(f"{identification}: {exc}")
-            logger.error("Error processing lead %s: %s", identification, exc, exc_info=True)
-
-    db_central.commit()
-    logger.info(
-        "Leads sync complete — created: %d | updated: %d | phones: +%d | emails: +%d | "
-        "addresses: +%d | skipped: %d | errors: %d",
-        result.customers_created,
-        result.customers_updated,
-        result.phones_added,
-        result.emails_added,
-        result.addresses_added,
-        result.skipped,
-        len(result.errors),
-    )
+    logger.info("prepare_leads_customers — prepared: %d CustomerUpsertItems", len(result))
     return result

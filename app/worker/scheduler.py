@@ -1,36 +1,49 @@
 """
-Scheduler de Sincronización — Scheduled Polling (Batch CDC).
+Scheduler de Sincronización — Arquitectura Híbrida.
 
-Lee dos horarios opcionales desde el entorno (SYNC_SCHEDULE_1 / SYNC_SCHEDULE_2)
-y ejecuta run_all_syncs() a cada hora configurada, de forma desatendida.
+El Worker ya NO conecta a PostgreSQL. El ciclo completo es:
+  1. Extraer datos de Collecta / DATA SEFIL / Leads MySQL (fuentes locales).
+  2. Transformar en CustomerUpsertItem (limpieza local).
+  3. Enviar por HTTP POST al endpoint /sync/bulk-upsert en Hostinger.
 
-Variables de entorno:
-  SYNC_SCHEDULE_1  Hora de la primera ejecución, formato HH:MM  (ej. "02:00")
-  SYNC_SCHEDULE_2  Hora de la segunda ejecución, formato HH:MM  (ej. "14:00")
-  Si ninguna está definida, el scheduler arranca pero no programa ningún job.
+Variables de entorno requeridas:
+  HOSTINGER_API_URL   URL base de la API pública (ej. https://services.sefil.com.ec/customers/api/v1)
+  HOSTINGER_API_KEY   API Key válida (X-API-Key header)
+  COLLECTA_API_URL    URL del endpoint /clients de Collecta
+  COLLECTA_TOKEN      Bearer token de Collecta
+  DATASEFIL_API_URL   URL del endpoint /clients de DATA SEFIL
+  DATASEFIL_TOKEN     Bearer token de DATA SEFIL
+  LEADS_DB_*          Credenciales MySQL de Leads
+  SYNC_SCHEDULE_1     Primera hora de ejecución (HH:MM, ej. "02:00")
+  SYNC_SCHEDULE_2     Segunda hora de ejecución (HH:MM, ej. "12:00")
 
 Uso:
   python -m app.worker.scheduler
+  python -c "from app.worker.scheduler import run_all_syncs; run_all_syncs()"
 """
 
 import logging
 import os
 import time
-import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import requests
 import schedule
 from dotenv import load_dotenv
 
-load_dotenv()  # carga .env cuando se ejecuta fuera de Docker (no-op si las vars ya existen)
+load_dotenv()  # no-op si las variables ya existen en el entorno
 
-from app.core.database import SessionLocal
-from app.services.etl_collecta import sync_collecta_contacts, sync_collecta_data, sync_collecta_directions
-from app.services.etl_datasefil import sync_datasefil_data
-from app.services.etl_leads import sync_leads_data
+from app.services.etl_collecta import (
+    prepare_collecta_contacts,
+    prepare_collecta_customers,
+    prepare_collecta_directions,
+)
+from app.services.etl_datasefil import prepare_datasefil_customers
+from app.services.etl_leads import prepare_leads_customers
+from app.worker.http_sender import send_customers
 
 # ---------------------------------------------------------------------------
-# Logging básico
+# Logging
 # ---------------------------------------------------------------------------
 
 logging.basicConfig(
@@ -42,224 +55,58 @@ logger = logging.getLogger("scheduler")
 
 
 # ---------------------------------------------------------------------------
-# Wrappers por fuente (cada uno aísla sus propios errores)
+# Pagination helpers (extraction — unchanged from previous architecture)
 # ---------------------------------------------------------------------------
 
-_COLLECTA_PER_PAGE = 100
-_COLLECTA_MAX_WORKERS = 5
-_DATASEFIL_PER_PAGE = 100
-_DATASEFIL_MAX_WORKERS = 5
+_PER_PAGE    = 100
+_MAX_WORKERS = 5
 
 
 def _fetch_collecta_page(url: str, headers: dict, page: int) -> tuple[list[dict], int]:
-    """Descarga una página y retorna (registros, last_page)."""
+    """Download one Collecta page; return (records, last_page)."""
     resp = requests.get(
         url, headers=headers,
-        params={"page": page, "per_page": _COLLECTA_PER_PAGE},
+        params={"page": page, "per_page": _PER_PAGE},
         timeout=30,
     )
     resp.raise_for_status()
-    result_block = resp.json().get("result", {})
-    return result_block.get("data", []), result_block.get("last_page", 1)
-
-
-def _run_collecta(db) -> None:
-    """
-    Paso 1 — Collecta.
-    Descarga todas las páginas en paralelo (5 workers) y las sincroniza.
-    Usa per_page=100 para reducir el número de peticiones HTTP.
-    """
-    url_collecta = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
-    token_collecta = os.getenv("COLLECTA_TOKEN", "")
-
-    headers = {
-        "Authorization": f"Bearer {token_collecta}",
-        "Accept": "application/json",
-    }
-
-    # Página 1: obtiene datos y total de páginas
-    try:
-        first_page_records, last_page = _fetch_collecta_page(url_collecta, headers, 1)
-    except Exception as exc:
-        logger.error("[Collecta] No se pudo descargar la información de la API: %s", exc)
-        return
-
-    logger.info("[Collecta] %d páginas a descargar (per_page=%d)", last_page, _COLLECTA_PER_PAGE)
-
-    all_records: list[dict] = list(first_page_records)
-
-    # Páginas restantes en paralelo
-    if last_page > 1:
-        pages = range(2, last_page + 1)
-        with ThreadPoolExecutor(max_workers=_COLLECTA_MAX_WORKERS) as executor:
-            futures = {
-                executor.submit(_fetch_collecta_page, url_collecta, headers, p): p
-                for p in pages
-            }
-            for future in as_completed(futures):
-                page_num = futures[future]
-                try:
-                    records, _ = future.result()
-                    all_records.extend(records)
-                except Exception as exc:
-                    logger.warning("[Collecta] Error en página %d: %s", page_num, exc)
-
-    if not all_records:
-        logger.warning("[Collecta] Sin datos disponibles — omitiendo este ciclo.")
-        return
-
-    logger.info("[Collecta] %d registros descargados", len(all_records))
-    result = sync_collecta_data(all_records, db)
-    logger.info(
-        "[Collecta] Finalizado — creados: %d | actualizados: %d | omitidos: %d | errores: %d",
-        result.created, result.updated, result.skipped, len(result.errors)
-    )
-
-
-def _run_collecta_contacts(db) -> None:
-    """
-    Paso 1b — Collecta Contacts.
-    Descarga todos los teléfonos desde /public/api/contacts con paginación paralela
-    y los vincula a los clientes existentes por client_ci.
-    """
-    base_url = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
-    contacts_url = base_url.rsplit("/", 1)[0] + "/contacts"
-    token_collecta = os.getenv("COLLECTA_TOKEN", "")
-
-    headers = {
-        "Authorization": f"Bearer {token_collecta}",
-        "Accept": "application/json",
-    }
-
-    # Página 1: obtiene datos y total de páginas
-    try:
-        first_page_records, last_page = _fetch_collecta_page(contacts_url, headers, 1)
-    except Exception as exc:
-        logger.error("[Collecta Contacts] No se pudo descargar la información: %s", exc)
-        return
-
-    logger.info("[Collecta Contacts] %d páginas a descargar", last_page)
-    all_contacts: list[dict] = list(first_page_records)
-
-    if last_page > 1:
-        with ThreadPoolExecutor(max_workers=_COLLECTA_MAX_WORKERS) as executor:
-            futures = {
-                executor.submit(_fetch_collecta_page, contacts_url, headers, p): p
-                for p in range(2, last_page + 1)
-            }
-            for future in as_completed(futures):
-                page_num = futures[future]
-                try:
-                    records, _ = future.result()
-                    all_contacts.extend(records)
-                except Exception as exc:
-                    logger.warning("[Collecta Contacts] Error en página %d: %s", page_num, exc)
-
-    if not all_contacts:
-        logger.warning("[Collecta Contacts] Sin datos disponibles — omitiendo este ciclo.")
-        return
-
-    logger.info("[Collecta Contacts] %d contactos descargados", len(all_contacts))
-    result = sync_collecta_contacts(all_contacts, db)
-    logger.info(
-        "[Collecta Contacts] Finalizado — actualizados: %d | omitidos: %d | errores: %d",
-        result.updated, result.skipped, len(result.errors),
-    )
-
-
-def _run_collecta_directions(db) -> None:
-    """
-    Paso 1c — Collecta Directions.
-    Descarga todas las direcciones desde /public/api/directions con paginación paralela.
-    """
-    base_url = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
-    directions_url = base_url.rsplit("/", 1)[0] + "/directions"
-    token_collecta = os.getenv("COLLECTA_TOKEN", "")
-
-    headers = {
-        "Authorization": f"Bearer {token_collecta}",
-        "Accept": "application/json",
-    }
-
-    try:
-        first_page_records, last_page = _fetch_collecta_page(directions_url, headers, 1)
-    except Exception as exc:
-        logger.error("[Collecta Directions] No se pudo descargar la información: %s", exc)
-        return
-
-    logger.info("[Collecta Directions] %d páginas a descargar", last_page)
-    all_directions: list[dict] = list(first_page_records)
-
-    if last_page > 1:
-        with ThreadPoolExecutor(max_workers=_COLLECTA_MAX_WORKERS) as executor:
-            futures = {
-                executor.submit(_fetch_collecta_page, directions_url, headers, p): p
-                for p in range(2, last_page + 1)
-            }
-            for future in as_completed(futures):
-                page_num = futures[future]
-                try:
-                    records, _ = future.result()
-                    all_directions.extend(records)
-                except Exception as exc:
-                    logger.warning("[Collecta Directions] Error en página %d: %s", page_num, exc)
-
-    if not all_directions:
-        logger.warning("[Collecta Directions] Sin datos disponibles — omitiendo este ciclo.")
-        return
-
-    logger.info("[Collecta Directions] %d direcciones descargadas", len(all_directions))
-    result = sync_collecta_directions(all_directions, db)
-    logger.info(
-        "[Collecta Directions] Finalizado — actualizados: %d | omitidos: %d | errores: %d",
-        result.updated, result.skipped, len(result.errors),
-    )
+    block = resp.json().get("result", {})
+    return block.get("data", []), block.get("last_page", 1)
 
 
 def _fetch_datasefil_page(url: str, headers: dict, page: int) -> tuple[list[dict], int]:
-    """Descarga una página de DATA SEFIL y retorna (registros, last_page)."""
+    """Download one DATA SEFIL page; return (records, last_page)."""
     resp = requests.get(
         url, headers=headers,
-        params={"page": page, "per_page": _DATASEFIL_PER_PAGE},
+        params={"page": page, "per_page": _PER_PAGE},
         timeout=30,
     )
     resp.raise_for_status()
-    json_resp = resp.json()
-    return json_resp.get("data", []), json_resp.get("last_page", 1)
+    body = resp.json()
+    return body.get("data", []), body.get("last_page", 1)
 
 
-def _run_datasefil(db) -> None:
-    """
-    Paso 2 — DATA SEFIL.
-    Descarga todas las páginas en paralelo (5 workers) y las sincroniza.
-    Usa per_page=100 para reducir el número de peticiones HTTP.
-    """
-    url_sefil = os.getenv("DATASEFIL_API_URL", "http://172.20.1.105:8000/api/clients")
-    token_sefil = os.getenv("DATASEFIL_TOKEN", "")
-
-    headers = {
-        "Authorization": f"Bearer {token_sefil}",
-        "Accept": "application/json",
-    }
-
-    # Página 1: obtiene datos y total de páginas
+def _fetch_all_pages(
+    fetch_fn,
+    url: str,
+    headers: dict,
+    label: str,
+) -> list[dict]:
+    """Fetch page 1 to discover last_page, then download remaining pages in parallel."""
     try:
-        first_page_records, last_page = _fetch_datasefil_page(url_sefil, headers, 1)
+        first_records, last_page = fetch_fn(url, headers, 1)
     except Exception as exc:
-        logger.error("[DATA SEFIL] No se pudo descargar la información de la API: %s", exc)
-        return
+        logger.error("[%s] Cannot fetch page 1: %s", label, exc)
+        return []
 
-    logger.info("[DATA SEFIL] %d páginas a descargar (per_page=%d)", last_page, _DATASEFIL_PER_PAGE)
+    logger.info("[%s] %d page(s) to download (per_page=%d)", label, last_page, _PER_PAGE)
+    all_records = list(first_records)
 
-    all_records: list[dict] = list(first_page_records)
-
-    # Páginas restantes en paralelo
     if last_page > 1:
-        pages = range(2, last_page + 1)
-        with ThreadPoolExecutor(max_workers=_DATASEFIL_MAX_WORKERS) as executor:
+        with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as executor:
             futures = {
-                executor.submit(_fetch_datasefil_page, url_sefil, headers, p): p
-                for p in pages
+                executor.submit(fetch_fn, url, headers, p): p
+                for p in range(2, last_page + 1)
             }
             for future in as_completed(futures):
                 page_num = futures[future]
@@ -267,73 +114,116 @@ def _run_datasefil(db) -> None:
                     records, _ = future.result()
                     all_records.extend(records)
                 except Exception as exc:
-                    logger.warning("[DATA SEFIL] Error en página %d: %s", page_num, exc)
+                    logger.warning("[%s] Error on page %d: %s", label, page_num, exc)
 
-    if not all_records:
-        logger.warning("[DATA SEFIL] Sin datos disponibles — omitiendo este ciclo.")
-        return
-
-    logger.info("[DATA SEFIL] %d registros descargados", len(all_records))
-    result = sync_datasefil_data(all_records, db)
-    logger.info(
-        "[DATA SEFIL] Finalizado — creados: %d | actualizados: %d | omitidos: %d | errores: %d",
-        result.created, result.updated, result.skipped, len(result.errors)
-    )
-
-
-def _run_leads(db) -> None:
-    """
-    Paso 3 — Leads (MySQL externo).
-    sync_leads_data gestiona su propia conexión MySQL; solo necesita la sesión central.
-    """
-    result = sync_leads_data(db)
-    logger.info(
-        "[Leads] Finalizado — creados: %d | actualizados: %d | teléfonos: +%d | "
-        "emails: +%d | direcciones: +%d | omitidos: %d | errores: %d",
-        result.customers_created,
-        result.customers_updated,
-        result.phones_added,
-        result.emails_added,
-        result.addresses_added,
-        result.skipped,
-        len(result.errors),
-    )
+    logger.info("[%s] %d total records downloaded.", label, len(all_records))
+    return all_records
 
 
 # ---------------------------------------------------------------------------
-# Orquestador principal
+# Per-source runners  (extract → transform → send)
+# ---------------------------------------------------------------------------
+
+def _run_collecta() -> None:
+    """Step 1 — Collecta /clients."""
+    url   = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
+    token = os.getenv("COLLECTA_TOKEN", "")
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+
+    raw = _fetch_all_pages(_fetch_collecta_page, url, headers, "Collecta-clients")
+    if not raw:
+        return
+
+    customers = prepare_collecta_customers(raw)
+    send_customers(customers, "Collecta-clients")
+
+
+def _run_collecta_contacts() -> None:
+    """Step 2 — Collecta /contacts."""
+    base_url = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
+    url      = base_url.rsplit("/", 1)[0] + "/contacts"
+    token    = os.getenv("COLLECTA_TOKEN", "")
+    headers  = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+
+    raw = _fetch_all_pages(_fetch_collecta_page, url, headers, "Collecta-contacts")
+    if not raw:
+        return
+
+    customers = prepare_collecta_contacts(raw)
+    send_customers(customers, "Collecta-contacts")
+
+
+def _run_collecta_directions() -> None:
+    """Step 3 — Collecta /directions."""
+    base_url = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
+    url      = base_url.rsplit("/", 1)[0] + "/directions"
+    token    = os.getenv("COLLECTA_TOKEN", "")
+    headers  = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+
+    raw = _fetch_all_pages(_fetch_collecta_page, url, headers, "Collecta-directions")
+    if not raw:
+        return
+
+    customers = prepare_collecta_directions(raw)
+    send_customers(customers, "Collecta-directions")
+
+
+def _run_datasefil() -> None:
+    """Step 4 — DATA SEFIL /clients."""
+    url     = os.getenv("DATASEFIL_API_URL", "http://172.20.1.105:8000/api/clients")
+    token   = os.getenv("DATASEFIL_TOKEN", "")
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+
+    raw = _fetch_all_pages(_fetch_datasefil_page, url, headers, "DATA SEFIL")
+    if not raw:
+        return
+
+    customers = prepare_datasefil_customers(raw)
+    send_customers(customers, "DATA SEFIL")
+
+
+def _run_leads() -> None:
+    """Step 5 — Leads (MySQL externo)."""
+    try:
+        customers = prepare_leads_customers()
+    except Exception as exc:
+        logger.error("[Leads] MySQL extraction failed: %s", exc, exc_info=True)
+        return
+
+    send_customers(customers, "Leads")
+
+
+# ---------------------------------------------------------------------------
+# Main orchestrator
 # ---------------------------------------------------------------------------
 
 def run_all_syncs() -> None:
     """
-    Ejecuta secuencialmente los tres ETLs dentro de una única sesión de BD.
-    Si un ETL falla, el error se registra y el proceso continúa con el siguiente.
-    Un fallo de sesión de BD aborta el ciclo completo.
+    Execute all 5 ETL steps sequentially.
+    Each step is isolated — an error in one does not abort the rest.
+    No database session is created here; all persistence happens via HTTP.
     """
     logger.info("=" * 60)
-    logger.info("INICIO DE CICLO DE SINCRONIZACIÓN")
+    logger.info("INICIO DE CICLO DE SINCRONIZACIÓN (Worker → Hostinger)")
     logger.info("=" * 60)
 
-    db = SessionLocal()
-    try:
-        for name, runner in [
-            ("Collecta",            _run_collecta),
-            ("Collecta Contacts",   _run_collecta_contacts),
-            ("Collecta Directions", _run_collecta_directions),
-            ("DATA SEFIL",          _run_datasefil),
-            ("Leads",               _run_leads),
-        ]:
-            try:
-                runner(db)
-            except Exception as exc:
-                logger.error(
-                    "[%s] Error inesperado — el ciclo continúa con la siguiente fuente. Detalle: %s",
-                    name,
-                    exc,
-                    exc_info=True,
-                )
-    finally:
-        db.close()
+    steps = [
+        ("Collecta clients",    _run_collecta),
+        ("Collecta contacts",   _run_collecta_contacts),
+        ("Collecta directions", _run_collecta_directions),
+        ("DATA SEFIL",          _run_datasefil),
+        ("Leads",               _run_leads),
+    ]
+
+    for name, runner in steps:
+        logger.info("--- [%s] Iniciando ---", name)
+        try:
+            runner()
+        except Exception as exc:
+            logger.error(
+                "[%s] Error inesperado — el ciclo continúa. Detalle: %s",
+                name, exc, exc_info=True,
+            )
 
     logger.info("=" * 60)
     logger.info("CICLO DE SINCRONIZACIÓN COMPLETADO")
@@ -341,48 +231,44 @@ def run_all_syncs() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Programación dinámica desde variables de entorno
+# Schedule registration
 # ---------------------------------------------------------------------------
 
 def _register_schedules() -> int:
-    """
-    Lee SYNC_SCHEDULE_1 y SYNC_SCHEDULE_2 del entorno y registra los jobs.
-    Retorna el número de horarios registrados.
-    """
     registered = 0
     for var in ("SYNC_SCHEDULE_1", "SYNC_SCHEDULE_2"):
         horario = os.getenv(var, "").strip()
         if not horario:
             continue
-        # Validación básica del formato HH:MM
         parts = horario.split(":")
         if len(parts) != 2 or not all(p.isdigit() for p in parts):
-            logger.warning("Valor inválido para %s=%r — se ignora (formato esperado: HH:MM)", var, horario)
+            logger.warning(
+                "Valor inválido para %s=%r — se ignora (formato esperado: HH:MM)", var, horario
+            )
             continue
         schedule.every().day.at(horario).do(run_all_syncs)
         logger.info("Job registrado desde %s: ejecución diaria a las %s", var, horario)
         registered += 1
-
     return registered
 
 
 # ---------------------------------------------------------------------------
-# Bucle principal
+# Entry point
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    logger.info("Iniciando Scheduler de Sincronización…")
+    logger.info("Iniciando Scheduler de Sincronización (arquitectura híbrida)…")
 
     jobs_registered = _register_schedules()
 
     if jobs_registered == 0:
         logger.warning(
             "No se encontraron horarios configurados. "
-            "Define SYNC_SCHEDULE_1 y/o SYNC_SCHEDULE_2 en el entorno "
-            "(ej. SYNC_SCHEDULE_1=02:00). El scheduler permanece activo pero no ejecutará jobs."
+            "Define SYNC_SCHEDULE_1 y/o SYNC_SCHEDULE_2 en el entorno. "
+            "El scheduler permanece activo pero no ejecutará jobs."
         )
     else:
-        logger.info("%d job(s) programado(s). Próximas ejecuciones:", jobs_registered)
+        logger.info("%d job(s) programado(s):", jobs_registered)
         for job in schedule.get_jobs():
             logger.info("  • %s", job)
 

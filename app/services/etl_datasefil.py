@@ -1,5 +1,9 @@
 """
-ETL específico para DATA SEFIL.
+ETL de extracción/transformación para DATA SEFIL.
+
+En la arquitectura híbrida este módulo ya NO escribe en la base de datos.
+Transforma los registros crudos en CustomerUpsertItem que el Worker enviará
+al endpoint POST /sync/bulk-upsert de Hostinger.
 
 Payload esperado por registro:
 {
@@ -12,28 +16,18 @@ Payload esperado por registro:
     "nationality":    "Ecuatoriana",
     "profession":     "INGENIERO",
     "salary":         1500.00,
-    "contacts": [
-        {"phone_number": "0991234567", "phone_type": "CELULAR"}
-    ],
-    "addresses": [
-        {"address": "Av. 6 de Diciembre N24-01", "province": "PICHINCHA", "city": "QUITO", "type": "DOMICILIO"}
-    ],
-    "emails": [
-        {"direction": "juan.perez@email.com", "active": true}
-    ]
+    "contacts":  [{"phone_number": "0991234567", "phone_type": "CELULAR"}],
+    "address":   [{"address": "Av. 6 de Dic", "province": "PICHINCHA", "city": "QUITO", "type": "DOMICILIO"}],
+    "emails":    [{"direction": "juan@email.com", "active": true}],
+    "parents":   [{"type": "MADRE", "name": "ANA LOPEZ", "identification": "1101067609", ...}]
 }
 """
 
 import logging
-from dataclasses import dataclass, field
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
-
-from app.models.collections import CollectionAddress, CollectionEmail, CollectionPhone
-from app.models.customer import Customer
-from app.models.financial import FinancialInformation
-from app.models.relationships import CustomerRelationship
+from app.schemas.sync import (
+    AddressItem, CustomerUpsertItem, EmailItem, PhoneItem, RelationshipItem,
+)
 from app.services.data_cleaning import (
     clean_civil_status,
     clean_date,
@@ -41,7 +35,6 @@ from app.services.data_cleaning import (
     clean_gender,
     clean_identification,
     clean_phone_number,
-    clean_salary,
     standardize_text,
 )
 
@@ -49,20 +42,12 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Result container
-# ---------------------------------------------------------------------------
-
-@dataclass
-class SyncResult:
-    created: int = 0
-    updated: int = 0
-    skipped: int = 0
-    errors: list[str] = field(default_factory=list)
-
-
-# ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+def _trunc(value: str | None, limit: int) -> str | None:
+    return value[:limit] if value and len(value) > limit else value
+
 
 def _parse_name(full_name: str) -> tuple[str, str]:
     """
@@ -78,25 +63,15 @@ def _parse_name(full_name: str) -> tuple[str, str]:
 
     if len(parts) <= 1:
         return full_name.strip(), ""
-
     if len(parts) >= 4:
-        last_name = f"{parts[0]} {parts[1]}"
-        first_name = " ".join(parts[2:])
-    elif len(parts) == 3:
-        last_name = f"{parts[0]} {parts[1]}"
-        first_name = parts[2]
-    else:
-        last_name = parts[0]
-        first_name = parts[1]
-
-    return first_name, last_name
+        return " ".join(parts[2:]), f"{parts[0]} {parts[1]}"
+    if len(parts) == 3:
+        return parts[2], f"{parts[0]} {parts[1]}"
+    return parts[1], parts[0]
 
 
 def _map_sefil_record(raw: dict) -> dict | None:
-    """
-    Maps a raw DATA SEFIL record to Customer model kwargs.
-    Returns None if the record is invalid and must be skipped.
-    """
+    """Maps a raw DATA SEFIL record to Customer field kwargs. Returns None if invalid."""
     identification = clean_identification(raw.get("identification"))
     if not identification:
         logger.warning("Skipping record — invalid identification: %r", raw.get("identification"))
@@ -112,32 +87,26 @@ def _map_sefil_record(raw: dict) -> dict | None:
         logger.warning("Skipping record %s — could not parse first_name", identification)
         return None
 
-    def _trunc(value: str | None, limit: int) -> str | None:
-        return value[:limit] if value and len(value) > limit else value
-
     return {
         "identification": identification,
-        "first_name": _trunc(first_name, 199),
-        "last_name": _trunc(last_name, 199),
-        "gender": clean_gender(raw.get("gender")),
-        "birth_date": clean_date(raw.get("birth")),
-        "birth_place": _trunc(standardize_text(raw.get("place_birth")) or None, 199),
-        "civil_status": clean_civil_status(raw.get("state_civil")),
-        "nationality": _trunc(standardize_text(raw.get("nationality")) or None, 99),
-        "profession": _trunc(standardize_text(raw.get("profession")) or None, 499),
+        "first_name":     _trunc(first_name, 199),
+        "last_name":      _trunc(last_name, 199),
+        "gender":         clean_gender(raw.get("gender")),
+        "birth_date":     clean_date(raw.get("birth")),
+        "birth_place":    _trunc(standardize_text(raw.get("place_birth")) or None, 199),
+        "civil_status":   clean_civil_status(raw.get("state_civil")),
+        "nationality":    _trunc(standardize_text(raw.get("nationality")) or None, 99),
+        "profession":     _trunc(standardize_text(raw.get("profession")) or None, 499),
     }
 
 
-def _sync_phones(customer: Customer, contacts_raw: list[dict], db: Session) -> None:
-    """
-    Inserts phones that don't already exist on the customer.
-    Deduplication is by phone_number. Skips blank or uncleanable numbers.
-    """
-    existing_numbers = {p.phone_number for p in customer.phones}
+def _extract_phones(contacts_raw: list[dict]) -> list[PhoneItem]:
+    result: list[PhoneItem] = []
+    seen: set[str] = set()
 
     for contact in contacts_raw:
         local_number = clean_phone_number(contact.get("phone_number"))
-        if not local_number or local_number in existing_numbers:
+        if not local_number or local_number in seen:
             continue
 
         raw_type = str(contact.get("phone_type", "")).upper()
@@ -150,28 +119,24 @@ def _sync_phones(customer: Customer, contacts_raw: list[dict], db: Session) -> N
         else:
             phone_type = raw_type or None
 
-        phone = CollectionPhone(
-            customer_id=customer.id,
-            country_code="+593",
+        result.append(PhoneItem(
             phone_number=local_number,
             phone_type=phone_type,
+            country_code="+593",
             source="DATA SEFIL",
-        )
-        db.add(phone)
-        customer.phones.append(phone)
-        existing_numbers.add(local_number)
+        ))
+        seen.add(local_number)
+
+    return result
 
 
-def _sync_addresses(customer: Customer, addresses_raw: list[dict], db: Session) -> None:
-    """
-    Inserts addresses that don't already exist on the customer.
-    Deduplication is by exact address_line match.
-    """
-    existing_lines = {a.address_line for a in customer.addresses}
+def _extract_addresses(addresses_raw: list[dict]) -> list[AddressItem]:
+    result: list[AddressItem] = []
+    seen: set[str] = set()
 
     for addr_data in addresses_raw:
         address_line = standardize_text(addr_data.get("address"))
-        if not address_line or address_line in existing_lines:
+        if not address_line or address_line in seen:
             continue
 
         raw_type = str(addr_data.get("type", "")).upper()
@@ -182,66 +147,55 @@ def _sync_addresses(customer: Customer, addresses_raw: list[dict], db: Session) 
         else:
             address_type = raw_type or None
 
-        addr = CollectionAddress(
-            customer_id=customer.id,
-            address_line=address_line,
+        result.append(AddressItem(
+            address_line=address_line[:499],
             province=standardize_text(addr_data.get("province")) or None,
             city=standardize_text(addr_data.get("city")) or None,
             address_type=address_type,
             source="DATA SEFIL",
-        )
-        db.add(addr)
-        customer.addresses.append(addr)
-        existing_lines.add(address_line)
+        ))
+        seen.add(address_line)
+
+    return result
 
 
-def _sync_emails(customer: Customer, emails_raw: list[dict], db: Session) -> None:
-    """
-    Inserts emails that don't already exist on the customer.
-    Deduplication is by exact email_address match. Skips invalid formats.
-    """
-    existing_addresses = {e.email_address for e in customer.emails}
+def _extract_emails(emails_raw: list[dict]) -> list[EmailItem]:
+    result: list[EmailItem] = []
+    seen: set[str] = set()
 
     for email_data in emails_raw:
         email_address = clean_email(email_data.get("direction"))
-        if not email_address or email_address in existing_addresses:
+        if not email_address or email_address in seen:
             continue
 
-        email = CollectionEmail(
-            customer_id=customer.id,
+        result.append(EmailItem(
             email_address=email_address,
             is_active=bool(email_data.get("active", True)),
             source="DATA SEFIL",
-        )
-        db.add(email)
-        customer.emails.append(email)
-        existing_addresses.add(email_address)
+        ))
+        seen.add(email_address)
+
+    return result
 
 
-def _sync_relationships(customer: Customer, parents_raw: list[dict], db: Session) -> None:
-    """
-    Inserts family relationships from DATA SEFIL `parents` array.
-    Deduplication by (relationship_type, related_identification or related_name).
-    """
-    existing_keys = {
-        (r.relationship_type, r.related_identification or r.related_name)
-        for r in customer.relationships
-    }
+def _extract_relationships(parents_raw: list[dict]) -> list[RelationshipItem]:
+    result: list[RelationshipItem] = []
+    seen: set[tuple] = set()
 
     for parent in parents_raw:
         rel_type = str(parent.get("type", "")).upper().strip()
         if not rel_type:
             continue
 
-        related_id = clean_identification(parent.get("identification")) or None
+        related_id   = clean_identification(parent.get("identification")) or None
         related_name = standardize_text(parent.get("name")) or None
-        dedup_key = (rel_type, related_id or related_name)
+        key          = (rel_type, related_id or related_name)
 
-        if dedup_key in existing_keys:
+        if key in seen:
             continue
+        seen.add(key)
 
-        rel = CustomerRelationship(
-            customer_id=customer.id,
+        result.append(RelationshipItem(
             relationship_type=rel_type,
             related_identification=related_id,
             related_name=related_name,
@@ -250,133 +204,46 @@ def _sync_relationships(customer: Customer, parents_raw: list[dict], db: Session
             related_civil_status=clean_civil_status(parent.get("state_civil")),
             related_death_date=clean_date(parent.get("death")) if parent.get("death") else None,
             source="DATA SEFIL",
-        )
-        db.add(rel)
-        customer.relationships.append(rel)
-        existing_keys.add(dedup_key)
+        ))
 
-
-def _sync_financial(customer: Customer, salary_raw: float | str | int | None, db: Session) -> None:
-    """
-    Creates or updates the One-to-One FinancialInformation record.
-    Only sets salary if it is not already present on an existing record.
-    """
-    salary = clean_salary(salary_raw)
-    if salary is None:
-        return
-
-    if customer.financial_information:
-        if customer.financial_information.salary is None:
-            customer.financial_information.salary = salary
-    else:
-        db.add(FinancialInformation(customer_id=customer.id, salary=salary))
+    return result
 
 
 # ---------------------------------------------------------------------------
-# Main ETL entry point
+# Public prepare function — returns CustomerUpsertItem list, no DB needed
 # ---------------------------------------------------------------------------
 
-_MERGEABLE_FIELDS: tuple[str, ...] = (
-    "gender", "birth_date", "birth_place",
-    "civil_status", "nationality", "profession",
-)
-
-
-def sync_datasefil_data(raw_data: list[dict], db: Session) -> SyncResult:
+def prepare_datasefil_customers(raw_data: list[dict]) -> list[CustomerUpsertItem]:
     """
-    Upserts a batch of DATA SEFIL records into the centralized database.
-
-    Merge strategy:
-    - Match on `identification`.
-    - New customer  → insert Customer + all relations (phones, addresses, emails, financial).
-    - Existing customer → update demographic fields ONLY if currently null/empty;
-      append new phones, addresses, and emails (anti-duplicate by exact value).
-    - Single commit at the end of the batch (atomic transaction).
-
-    Args:
-        raw_data: List of raw dicts from DATA SEFIL.
-        db:       Active SQLAlchemy session.
-
-    Returns:
-        SyncResult with counts of created, updated, skipped, and error records.
+    Transform raw DATA SEFIL records into a CustomerUpsertItem list.
+    Phones, addresses, emails, relationships and salary are embedded inline.
     """
-    result = SyncResult()
+    result:  list[CustomerUpsertItem] = []
+    skipped = 0
 
     for raw in raw_data:
-        try:
-            customer_fields = _map_sefil_record(raw)
-            if not customer_fields:
-                result.skipped += 1
-                continue
+        fields = _map_sefil_record(raw)
+        if not fields:
+            skipped += 1
+            continue
 
-            identification: str = customer_fields["identification"]
+        # Combine emails array + top-level "email" single field
+        emails_raw = list(raw.get("emails", []))
+        top_email  = raw.get("email")
+        if top_email:
+            emails_raw.append({"direction": top_email, "active": 1})
 
-            stmt = (
-                select(Customer)
-                .where(Customer.identification == identification)
-                .options(
-                    selectinload(Customer.phones),
-                    selectinload(Customer.addresses),
-                    selectinload(Customer.emails),
-                    selectinload(Customer.financial_information),
-                    selectinload(Customer.relationships),
-                )
-            )
-            existing = db.execute(stmt).scalar_one_or_none()
+        result.append(CustomerUpsertItem(
+            **fields,
+            salary=raw.get("salary"),
+            phones=_extract_phones(raw.get("contacts", [])),
+            addresses=_extract_addresses(raw.get("address", [])),
+            emails=_extract_emails(emails_raw),
+            relationships=_extract_relationships(raw.get("parents", [])),
+        ))
 
-            # Combine emails array + top-level "email" single field
-            emails_raw = list(raw.get("emails", []))
-            top_email = raw.get("email")
-            if top_email:
-                emails_raw.append({"direction": top_email, "active": 1})
-
-            if existing:
-                for attr in _MERGEABLE_FIELDS:
-                    incoming = customer_fields.get(attr)
-                    if incoming and not getattr(existing, attr):
-                        setattr(existing, attr, incoming)
-
-                _sync_phones(existing, raw.get("contacts", []), db)
-                _sync_addresses(existing, raw.get("address", []), db)
-                _sync_emails(existing, emails_raw, db)
-                _sync_financial(existing, raw.get("salary"), db)
-                _sync_relationships(existing, raw.get("parents", []), db)
-                result.updated += 1
-                logger.info("Updated customer %s", identification)
-
-            else:
-                new_customer = Customer(**customer_fields)
-                db.add(new_customer)
-                db.flush()  # resolve new_customer.id before adding children
-                new_customer.phones = []
-                new_customer.addresses = []
-                new_customer.emails = []
-                new_customer.financial_information = None
-                new_customer.relationships = []
-
-                _sync_phones(new_customer, raw.get("contacts", []), db)
-                _sync_addresses(new_customer, raw.get("address", []), db)
-                _sync_emails(new_customer, emails_raw, db)
-                _sync_financial(new_customer, raw.get("salary"), db)
-                _sync_relationships(new_customer, raw.get("parents", []), db)
-                result.created += 1
-                logger.info("Created customer %s", identification)
-
-        except Exception as exc:  # noqa: BLE001
-            result.errors.append(f"{raw.get('identification', '?')}: {exc}")
-            logger.error(
-                "Unexpected error processing record %r: %s",
-                raw.get("identification"),
-                exc,
-                exc_info=True,
-            )
-
-    db.commit()
     logger.info(
-        "DATA SEFIL sync complete — created: %d | updated: %d | skipped: %d | errors: %d",
-        result.created,
-        result.updated,
-        result.skipped,
-        len(result.errors),
+        "prepare_datasefil_customers — prepared: %d | skipped: %d",
+        len(result), skipped,
     )
     return result

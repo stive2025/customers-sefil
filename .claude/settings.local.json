@@ -10,7 +10,9 @@
       "Bash(curl -s -X GET \"http://localhost:8002/api/v1/customers/1054/full\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('relationships key present:', 'relationships' in d\\); print\\('phones:', d.get\\('phones',[]\\)\\); print\\('relationships:', d.get\\('relationships', 'MISSING'\\)\\)\")",
       "Bash(curl -s -X GET \"http://localhost:8002/api/v1/customers/1054\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
-      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d['identification']\\)\")"
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d['identification']\\)\")",
+      "Bash(curl -s -X GET \"http://localhost:8002/openapi.json\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); paths=list\\(d['paths'].keys\\(\\)\\); [print\\(p\\) for p in paths if 'sync' in p]\")"
     ]
   }
 }

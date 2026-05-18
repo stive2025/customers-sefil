@@ -4,7 +4,7 @@ networks:
     name: centralizacion_net
     ipam:
       config:
-        - subnet: 192.168.200.0/24   # Evita colisión con 172.20.x.x (red LAN interna)
+        - subnet: 10.50.0.0/16  
 
 volumes:
   postgres_data:

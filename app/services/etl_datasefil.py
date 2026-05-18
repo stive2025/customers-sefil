@@ -112,16 +112,19 @@ def _map_sefil_record(raw: dict) -> dict | None:
         logger.warning("Skipping record %s — could not parse first_name", identification)
         return None
 
+    def _trunc(value: str | None, limit: int) -> str | None:
+        return value[:limit] if value and len(value) > limit else value
+
     return {
         "identification": identification,
-        "first_name": first_name,
-        "last_name": last_name,
+        "first_name": _trunc(first_name, 199),
+        "last_name": _trunc(last_name, 199),
         "gender": clean_gender(raw.get("gender")),
         "birth_date": clean_date(raw.get("birth")),
-        "birth_place": standardize_text(raw.get("place_birth")) or None,
+        "birth_place": _trunc(standardize_text(raw.get("place_birth")) or None, 199),
         "civil_status": clean_civil_status(raw.get("state_civil")),
-        "nationality": standardize_text(raw.get("nationality")) or None,
-        "profession": standardize_text(raw.get("profession")) or None,
+        "nationality": _trunc(standardize_text(raw.get("nationality")) or None, 99),
+        "profession": _trunc(standardize_text(raw.get("profession")) or None, 499),
     }
 
 

@@ -35,22 +35,29 @@ _DEMOGRAPHIC_FIELDS: tuple[str, ...] = (
 # ---------------------------------------------------------------------------
 
 def _merge_phones(customer: Customer, phones: list[PhoneItem], db: Session) -> None:
-    existing = {p.phone_number for p in customer.phones}
+    existing = {p.phone_number: p for p in customer.phones}
     for item in phones:
-        if not item.phone_number or item.phone_number in existing:
+        if not item.phone_number:
             continue
-        phone = CollectionPhone(
-            customer_id=customer.id,
-            phone_number=item.phone_number,
-            phone_type=item.phone_type,
-            country_code=item.country_code,
-            source=item.source,
-            calls_effective=item.calls_effective,
-            calls_not_effective=item.calls_not_effective,
-        )
-        db.add(phone)
-        customer.phones.append(phone)
-        existing.add(item.phone_number)
+        if item.phone_number in existing:
+            phone = existing[item.phone_number]
+            if item.calls_effective is not None:
+                phone.calls_effective = item.calls_effective
+            if item.calls_not_effective is not None:
+                phone.calls_not_effective = item.calls_not_effective
+        else:
+            phone = CollectionPhone(
+                customer_id=customer.id,
+                phone_number=item.phone_number,
+                phone_type=item.phone_type,
+                country_code=item.country_code,
+                source=item.source,
+                calls_effective=item.calls_effective,
+                calls_not_effective=item.calls_not_effective,
+            )
+            db.add(phone)
+            customer.phones.append(phone)
+            existing[item.phone_number] = phone
 
 
 def _merge_addresses(customer: Customer, addresses: list[AddressItem], db: Session) -> None:

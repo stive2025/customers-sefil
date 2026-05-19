@@ -25,8 +25,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: centralizacion_worker
+    dns:
+      - 8.8.8.8      # DNS de Google
+      - 1.1.1.1
     restart: unless-stopped
     env_file: .env.worker
     # Acceso a la red host para alcanzar IPs LAN (172.20.1.x)
-    network_mode: host
     command: python -m app.worker.scheduler

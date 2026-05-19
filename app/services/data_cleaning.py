@@ -151,6 +151,11 @@ def clean_identification(identificacion: str | None) -> str:
         logger.debug("Identificación no numérica descartada: %s", identificacion)
         return ""
 
+    # Cédulas de 9 dígitos: el cero inicial fue eliminado por el sistema origen
+    # (tratamiento numérico). Restaurar igual que clean_phone_number.
+    if len(limpia) == CEDULA_LEN - 1:
+        limpia = "0" + limpia
+
     # Validar longitud
     if len(limpia) not in (CEDULA_LEN, RUC_LEN):
         logger.debug(

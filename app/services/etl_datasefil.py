@@ -124,6 +124,8 @@ def _extract_phones(contacts_raw: list[dict]) -> list[PhoneItem]:
             phone_type=phone_type,
             country_code="+593",
             source="DATA SEFIL",
+            calls_effective=contact.get("counter_correct_number"),
+            calls_not_effective=contact.get("counter_incorrect_number"),
         ))
         seen.add(local_number)
 

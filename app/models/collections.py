@@ -10,7 +10,7 @@ All models share a Many-to-One relationship with Customer.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, SmallInteger, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -53,6 +53,12 @@ class CollectionPhone(Base):
         nullable=True,
         default="Manual",
         comment="Origin system: Collecta, DATA SEFIL, Manual, etc.",
+    )
+    calls_effective: Mapped[Optional[int]] = mapped_column(
+        SmallInteger, nullable=True, comment="Number of effective calls (Collecta)"
+    )
+    calls_not_effective: Mapped[Optional[int]] = mapped_column(
+        SmallInteger, nullable=True, comment="Number of non-effective calls (Collecta)"
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

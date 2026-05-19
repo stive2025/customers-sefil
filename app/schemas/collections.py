@@ -40,6 +40,8 @@ class CollectionPhoneResponse(CollectionPhoneBase):
 
     id: int
     customer_id: int
+    calls_effective: Optional[int] = None
+    calls_not_effective: Optional[int] = None
     created_at: datetime
 
 

@@ -81,3 +81,4 @@ services:
       api:
         condition: service_started
     networks:
+      - mdm_network

@@ -13,7 +13,25 @@
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d['identification']\\)\")",
       "Bash(curl -s -X GET \"http://localhost:8002/openapi.json\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); paths=list\\(d['paths'].keys\\(\\)\\); [print\\(p\\) for p in paths if 'sync' in p]\")",
-      "Bash(docker exec centralizacion_api python -c ' *)"
+      "Bash(docker exec centralizacion_api python -c ' *)",
+      "Bash(docker exec centralizacion_worker python -c ' *)",
+      "Bash(Start-Sleep -Seconds 30)",
+      "Bash(Get-Content \"C:\\\\Users\\\\Sistemas\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Sistemas-Desktop-CASV-DOCS-CentralizacionInformacion\\\\0dcc9b67-06df-4a4c-81a1-bf47fd01a057\\\\tasks\\\\bpkj390y6.output\")",
+      "Bash(Select-Object -Last 5)",
+      "Bash(curl -s -X GET \"https://services.sefil.com.ec/customers/api/v1/customers/56/full\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
+      "Bash(python -m json.tool)",
+      "Bash(alembic heads *)",
+      "Bash(alembic upgrade *)",
+      "Bash(docker exec *)",
+      "Bash(curl -s \"http://localhost:8002/api/v1/customers/56/full\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
+      "Bash(docker inspect *)",
+      "Bash(docker network *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(k,v.get\\('Aliases',''\\),v.get\\('DNSNames',''\\)\\) for c in d for k,v in d[0]['Containers'].items\\(\\)]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(k, v.get\\('Aliases'\\)\\) for k,v in d.items\\(\\)]\")",
+      "Bash(curl -s \"http://localhost:8002/api/v1/customers/1/full\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
+      "Bash(curl -s \"http://localhost:8002/api/v1/customers/?limit=1\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
+      "Bash(curl -s \"http://localhost:8002/api/v1/customers/1036/full\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
+      "Bash(python -c ' *)"
     ]
   }
 }

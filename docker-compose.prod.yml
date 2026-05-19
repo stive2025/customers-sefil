@@ -55,9 +55,8 @@ services:
     environment:
       # La API se conecta a PostgreSQL en la red interna Docker
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-centralizacion_db}
-    # Puerto NO expuesto directamente; Nginx actúa de proxy
-    expose:
-      - "8002"
+    ports:
+      - "8002:8002"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --workers 2
     depends_on:
       db:
@@ -65,7 +64,7 @@ services:
     networks:
       - mdm_network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8002/ || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import socket; socket.socket().connect((\"127.0.0.1\", 8002))' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

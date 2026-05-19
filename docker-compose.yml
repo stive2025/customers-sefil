@@ -4,7 +4,7 @@ networks:
     name: centralizacion_net
     ipam:
       config:
-        - subnet: 10.50.0.0/16  
+        - subnet: 10.50.0.0/16
 
 volumes:
   postgres_data:
@@ -51,7 +51,7 @@ services:
       API_KEYS: ${VALID_API_KEYS}
     ports:
       - "8002:8002"
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002
     depends_on:
       db:
         condition: service_healthy
@@ -81,4 +81,3 @@ services:
       api:
         condition: service_started
     networks:
-      - mdm_network

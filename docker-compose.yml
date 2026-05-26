@@ -48,7 +48,6 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-S3F1L_Dev}@db:5432/${POSTGRES_DB:-centralizacion_db}
-      API_KEYS: ${VALID_API_KEYS}
     ports:
       - "8002:8002"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8002
@@ -70,7 +69,6 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-S3F1L_Dev}@db:5432/${POSTGRES_DB:-centralizacion_db}
-      API_KEYS: ${VALID_API_KEYS}
     dns:
       - 8.8.8.8
       - 8.8.4.4

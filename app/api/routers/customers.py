@@ -12,8 +12,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import get_db
 from app.core.security import get_api_key
+from app.models.collections import CollectionAddress, CollectionEmail, CollectionPhone
 from app.models.customer import Customer
+from app.models.relationships import CustomerRelationship
+from app.schemas.collections import CollectionAddressResponse, CollectionEmailResponse, CollectionPhoneCreate, CollectionPhoneResponse
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerResponseFull, CustomerUpdate
+from app.schemas.relationships import CustomerRelationshipResponse
 
 # El prefix base "/api/v1/customers" se define en main.py al incluir el router.
 # dependencies=[Depends(get_api_key)] protege todos los endpoints del router
@@ -207,6 +211,167 @@ def get_customer_full(
             detail=f"Cliente con ID {customer_id} no encontrado.",
         )
     return cliente
+
+
+# ---------------------------------------------------------------------------
+# GET /{customer_id}/phones — Teléfonos paginados
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/{customer_id}/phones",
+    response_model=List[CollectionPhoneResponse],
+    summary="Listar teléfonos de un cliente",
+    description="Retorna los teléfonos del cliente con paginación. Ordenados por fecha de creación descendente.",
+)
+def list_customer_phones(
+    customer_id: int,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> list:
+    if not db.get(Customer, customer_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Cliente con ID {customer_id} no encontrado.")
+    stmt = (
+        select(CollectionPhone)
+        .where(CollectionPhone.customer_id == customer_id)
+        .order_by(CollectionPhone.created_at.desc())
+        .offset(skip).limit(limit)
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# GET /{customer_id}/emails — Correos paginados
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/{customer_id}/emails",
+    response_model=List[CollectionEmailResponse],
+    summary="Listar correos de un cliente",
+    description="Retorna los correos electrónicos del cliente con paginación.",
+)
+def list_customer_emails(
+    customer_id: int,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> list:
+    if not db.get(Customer, customer_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Cliente con ID {customer_id} no encontrado.")
+    stmt = (
+        select(CollectionEmail)
+        .where(CollectionEmail.customer_id == customer_id)
+        .order_by(CollectionEmail.created_at.desc())
+        .offset(skip).limit(limit)
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# GET /{customer_id}/addresses — Direcciones paginadas
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/{customer_id}/addresses",
+    response_model=List[CollectionAddressResponse],
+    summary="Listar direcciones de un cliente",
+    description="Retorna las direcciones del cliente con paginación.",
+)
+def list_customer_addresses(
+    customer_id: int,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> list:
+    if not db.get(Customer, customer_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Cliente con ID {customer_id} no encontrado.")
+    stmt = (
+        select(CollectionAddress)
+        .where(CollectionAddress.customer_id == customer_id)
+        .order_by(CollectionAddress.created_at.desc())
+        .offset(skip).limit(limit)
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# GET /{customer_id}/relationships — Relaciones familiares paginadas
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/{customer_id}/relationships",
+    response_model=List[CustomerRelationshipResponse],
+    summary="Listar relaciones familiares de un cliente",
+    description="Retorna las relaciones familiares del cliente con paginación.",
+)
+def list_customer_relationships(
+    customer_id: int,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> list:
+    if not db.get(Customer, customer_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Cliente con ID {customer_id} no encontrado.")
+    stmt = (
+        select(CustomerRelationship)
+        .where(CustomerRelationship.customer_id == customer_id)
+        .order_by(CustomerRelationship.id)
+        .offset(skip).limit(limit)
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# POST /by/{identification}/phones — Agregar teléfono por cédula
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/by/{identification}/phones",
+    response_model=CollectionPhoneResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Agregar teléfono a un cliente por cédula",
+    description="Agrega un nuevo número de teléfono al cliente identificado por su cédula o RUC. Retorna 404 si no existe, 409 si el número ya está registrado.",
+)
+def add_phone_by_identification(
+    identification: str,
+    payload: CollectionPhoneCreate,
+    db: Session = Depends(get_db),
+) -> CollectionPhone:
+    stmt = select(Customer).where(Customer.identification == identification)
+    cliente = db.execute(stmt).scalar_one_or_none()
+    if not cliente:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cliente con identificación '{identification}' no encontrado.",
+        )
+
+    duplicado = db.execute(
+        select(CollectionPhone).where(
+            CollectionPhone.customer_id == cliente.id,
+            CollectionPhone.phone_number == payload.phone_number,
+        )
+    ).scalar_one_or_none()
+    if duplicado:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"El número '{payload.phone_number}' ya está registrado para este cliente.",
+        )
+
+    phone = CollectionPhone(
+        customer_id=cliente.id,
+        phone_number=payload.phone_number,
+        phone_type=payload.phone_type,
+        country_code=payload.country_code,
+        source=payload.source,
+    )
+    db.add(phone)
+    db.commit()
+    db.refresh(phone)
+    return phone
 
 
 # ---------------------------------------------------------------------------

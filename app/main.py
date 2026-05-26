@@ -38,14 +38,20 @@ app = FastAPI(
 # Middlewares
 # ---------------------------------------------------------------------------
 
+ORIGENES_PERMITIDOS = [
+    "http://172.20.1.105",
+    "https://sefil.com.ec",
+    "http://172.20.1.104",
+    "*",  # Solo para desarrollo, eliminar en producción
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # Restringir en producción a dominios específicos
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ORIGENES_PERMITIDOS, 
+    allow_credentials=True,             # Permite cookies y headers de autenticación
+    allow_methods=["GET", "POST", "PUT", "DELETE"],  # Métodos explícitos
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],  # Headers explícitos
 )
-
 # ---------------------------------------------------------------------------
 # Routers
 # ---------------------------------------------------------------------------

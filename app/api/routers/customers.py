@@ -6,7 +6,7 @@ Implementa los endpoints CRUD completos con paginación y manejo de errores.
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -108,8 +108,10 @@ def search_customers(
     q: str = Query(..., min_length=3, description="Término de búsqueda"),
     db: Session = Depends(get_db),
 ) -> List[Customer]:
-    """Búsqueda combinada: identification exacto OR ilike en first_name / last_name."""
+    """Búsqueda combinada: identification exacto OR ilike en first_name / last_name / full_name."""
     pattern = f"%{q}%"
+    full_name_fn = func.concat(Customer.first_name, " ", Customer.last_name)
+    full_name_rev = func.concat(Customer.last_name, " ", Customer.first_name)
     stmt = (
         select(Customer)
         .where(
@@ -117,6 +119,8 @@ def search_customers(
                 Customer.identification == q,
                 Customer.first_name.ilike(pattern),
                 Customer.last_name.ilike(pattern),
+                full_name_fn.ilike(pattern),
+                full_name_rev.ilike(pattern),
             )
         )
         .order_by(Customer.last_name, Customer.first_name)

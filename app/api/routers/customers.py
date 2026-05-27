@@ -18,6 +18,7 @@ from app.models.relationships import CustomerRelationship
 from app.schemas.collections import CollectionAddressResponse, CollectionEmailResponse, CollectionPhoneCreate, CollectionPhoneResponse
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerResponseFull, CustomerUpdate
 from app.schemas.relationships import CustomerRelationshipResponse
+from app.services.data_cleaning import clean_phone_number
 
 # El prefix base "/api/v1/customers" se define en main.py al incluir el router.
 # dependencies=[Depends(get_api_key)] protege todos los endpoints del router
@@ -127,6 +128,45 @@ def search_customers(
         .limit(20)
     )
     return list(db.execute(stmt).scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# GET /by-phone/{phone_number} — Buscar cliente por número de teléfono
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/by-phone/{phone_number}",
+    response_model=CustomerResponse,
+    summary="Buscar cliente por número de teléfono",
+    description=(
+        "Retorna el cliente asociado al número de teléfono indicado. "
+        "El número se normaliza automáticamente (acepta +593, 09..., etc.). "
+        "Retorna 404 si no existe ningún cliente con ese teléfono."
+    ),
+)
+def get_customer_by_phone(
+    phone_number: str,
+    db: Session = Depends(get_db),
+) -> Customer:
+    normalized = clean_phone_number(phone_number)
+    if not normalized:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"El número '{phone_number}' no es válido.",
+        )
+    stmt = (
+        select(Customer)
+        .join(CollectionPhone, CollectionPhone.customer_id == Customer.id)
+        .where(CollectionPhone.phone_number == normalized)
+        .limit(1)
+    )
+    cliente = db.execute(stmt).scalar_one_or_none()
+    if not cliente:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No se encontró ningún cliente con el teléfono '{normalized}'.",
+        )
+    return cliente
 
 
 # ---------------------------------------------------------------------------

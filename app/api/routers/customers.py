@@ -326,6 +326,36 @@ def list_customer_relationships(
 
 
 # ---------------------------------------------------------------------------
+# DELETE /{customer_id}/phones/{phone_id} — Eliminar teléfono
+# ---------------------------------------------------------------------------
+
+@router.delete(
+    "/{customer_id}/phones/{phone_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar un teléfono de un cliente",
+    description="Elimina permanentemente un teléfono del cliente. Retorna 404 si el cliente o el teléfono no existen.",
+)
+def delete_customer_phone(
+    customer_id: int,
+    phone_id: int,
+    db: Session = Depends(get_db),
+) -> None:
+    if not db.get(Customer, customer_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Cliente con ID {customer_id} no encontrado.")
+    stmt = select(CollectionPhone).where(
+        CollectionPhone.id == phone_id,
+        CollectionPhone.customer_id == customer_id,
+    )
+    phone = db.execute(stmt).scalar_one_or_none()
+    if not phone:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Teléfono con ID {phone_id} no encontrado para este cliente.")
+    db.delete(phone)
+    db.commit()
+
+
+# ---------------------------------------------------------------------------
 # POST /by/{identification}/phones — Agregar teléfono por cédula
 # ---------------------------------------------------------------------------
 

@@ -39,7 +39,10 @@
       "Bash(curl -s \"http://localhost:8002/api/v1/customers/24630/phones?limit=3\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
       "Bash(curl -s -X POST http://localhost:8002/api/v1/customers/by/1102995204/phones -H 'X-API-Key: sk_live_collecta_9x8A2' -H 'Content-Type: application/json' -d '{\"phone_number\":\"0991111222\",\"phone_type\":\"MOBILE\",\"source\":\"Manual\"}')",
       "Bash(curl -s \"http://localhost:8002/api/v1/customers/search?q=RENE+ANGEL+SUCANGA\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
-      "Bash(curl -s \"http://localhost:8002/api/v1/customers/by-phone/0991111222\" -H \"X-API-Key: sk_live_collecta_9x8A2\")"
+      "Bash(curl -s \"http://localhost:8002/api/v1/customers/by-phone/0991111222\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
+      "Bash(curl -s -X POST \"http://localhost:8002/api/v1/sync/run/collecta\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
+      "Bash(.\\\\venv\\\\Scripts\\\\Activate.ps1)",
+      "Bash(python -c \"import sync_manual; print\\('OK'\\)\")"
     ]
   }
 }

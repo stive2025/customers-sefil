@@ -29,10 +29,7 @@ from dotenv import load_dotenv
 # Cargar .env.sync antes de importar los módulos de la app
 load_dotenv(".env.sync")
 
-from app.services.etl_collecta import (
-    prepare_collecta_contacts,
-    prepare_collecta_customers,
-)
+from app.services.etl_collecta import prepare_collecta_customers
 from app.services.etl_datasefil import prepare_datasefil_customers
 from app.services.etl_fetcher import fetch_all_pages, fetch_collecta_page, fetch_datasefil_page
 from app.services.etl_leads import prepare_leads_customers
@@ -121,12 +118,9 @@ def run_collecta() -> None:
     url     = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
     token   = os.getenv("COLLECTA_TOKEN", "")
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-    base    = url.rsplit("/", 1)[0]
-
+    # /contacts y /directions requieren client_identification individual — no permiten descarga masiva
     for label, endpoint, prepare_fn in [
-        ("Collecta-clients",    url,                  prepare_collecta_customers),
-        ("Collecta-contacts",   f"{base}/contacts",   prepare_collecta_contacts),
-        # Collecta /directions ahora requiere client_ci por registro — no permite descarga masiva
+        ("Collecta-clients", url, prepare_collecta_customers),
     ]:
         logger.info("=== [%s] Iniciando ===", label)
         raw = fetch_all_pages(fetch_collecta_page, endpoint, headers, label)

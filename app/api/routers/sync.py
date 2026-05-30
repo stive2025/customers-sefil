@@ -32,6 +32,7 @@ from app.services.bulk_upsert import bulk_upsert_customers
 from app.services.etl_collecta import (
     prepare_collecta_contacts,
     prepare_collecta_customers,
+    prepare_collecta_directions,
 )
 from app.services.etl_datasefil import prepare_datasefil_customers
 from app.services.etl_fetcher import fetch_all_pages, fetch_collecta_page, fetch_datasefil_page
@@ -135,12 +136,10 @@ def _sync_collecta() -> SyncRunResponse:
     url     = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
     token   = os.getenv("COLLECTA_TOKEN", "")
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-    base    = url.rsplit("/", 1)[0]
+    # /contacts y /directions requieren client_identification individual — no permiten descarga masiva
 
     for label, endpoint, prepare_fn in [
-        ("Collecta-clients",  url,                prepare_collecta_customers),
-        ("Collecta-contacts", f"{base}/contacts", prepare_collecta_contacts),
-        # /directions requiere client_ci individual — no permite descarga masiva
+        ("Collecta-clients", url, prepare_collecta_customers),
     ]:
         raw = fetch_all_pages(fetch_collecta_page, endpoint, headers, label)
         if raw:
@@ -206,9 +205,52 @@ def _start_job(fn, background_tasks: BackgroundTasks) -> JobStartedResponse:
 # ---------------------------------------------------------------------------
 
 @router.post("/run/collecta", tags=["Sync"], response_model=JobStartedResponse,
-             status_code=status.HTTP_202_ACCEPTED, summary="Sync manual — Collecta")
+             status_code=status.HTTP_202_ACCEPTED, summary="Sync masivo — Collecta (solo /clients)")
 def run_collecta(background_tasks: BackgroundTasks) -> JobStartedResponse:
     return _start_job(_sync_collecta, background_tasks)
+
+
+@router.post(
+    "/run/collecta/{identification}",
+    tags=["Sync"],
+    response_model=SyncRunResponse,
+    summary="Sync individual — Collecta por cédula",
+    description=(
+        "Sincroniza un cliente específico desde Collecta: datos básicos (/clients), "
+        "teléfonos (/contacts) y direcciones (/directions). "
+        "Retorna estadísticas al finalizar."
+    ),
+)
+def run_collecta_by_identification(identification: str) -> SyncRunResponse:
+    url     = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
+    token   = os.getenv("COLLECTA_TOKEN", "")
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    base    = url.rsplit("/", 1)[0]
+    result  = SyncRunResponse(source=f"Collecta/{identification}")
+
+    import requests as _req
+
+    for label, endpoint, param_key, prepare_fn in [
+        ("clients",    url,                    "ci",                     prepare_collecta_customers),
+        ("contacts",   f"{base}/contacts",     "client_identification",  prepare_collecta_contacts),
+        ("directions", f"{base}/directions",   "client_ci",              prepare_collecta_directions),
+    ]:
+        try:
+            resp = _req.get(
+                endpoint, headers=headers,
+                params={param_key: identification, "page": 1, "per_page": 100},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            body = resp.json()
+            raw  = body.get("result", {}).get("data", body.get("data", []))
+            if raw:
+                _accumulate(result, _run_upsert(prepare_fn(raw), f"Collecta-{label}/{identification}"))
+        except Exception as exc:
+            logger.warning("[Collecta-%s/%s] Error: %s", label, identification, exc)
+            result.errors.append(f"{label}: {exc}")
+
+    return result
 
 
 @router.post("/run/datasefil", tags=["Sync"], response_model=JobStartedResponse,

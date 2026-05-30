@@ -48,7 +48,8 @@
       "Bash(python -c \"from app.api.routers.sync import router; print\\(f'OK — {len\\(router.routes\\)} rutas'\\)\")",
       "Bash(find app/worker -type f)",
       "Bash(ls app/worker/)",
-      "Bash(python -c \"import app.services.etl_collecta; print\\('OK'\\)\")"
+      "Bash(python -c \"import app.services.etl_collecta; print\\('OK'\\)\")",
+      "Bash(python -c \"from app.api.routers.sync import router; import app.services.etl_collecta; print\\('OK'\\)\")"
     ]
   }
 }

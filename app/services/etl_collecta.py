@@ -174,10 +174,7 @@ def prepare_collecta_customers(raw_data: list[dict]) -> list[CustomerUpsertItem]
 
 
 def prepare_collecta_contacts(raw_contacts: list[dict]) -> list[CustomerUpsertItem]:
-    """
-    Transform raw Collecta /contacts records into CustomerUpsertItem list.
-    Each item carries only phone data — the API merges them into the existing customer.
-    """
+    """Transform raw Collecta /contacts records (per-client) into CustomerUpsertItem list."""
     contacts_by_ci: dict[str, list[dict]] = defaultdict(list)
     for contact in raw_contacts:
         ci = clean_identification(str(contact.get("client_ci", "")))
@@ -185,7 +182,6 @@ def prepare_collecta_contacts(raw_contacts: list[dict]) -> list[CustomerUpsertIt
             contacts_by_ci[ci].append(contact)
 
     result: list[CustomerUpsertItem] = []
-
     for ci, contacts in contacts_by_ci.items():
         phones = _build_phones(contacts, only_active=True)
         if phones:
@@ -193,5 +189,50 @@ def prepare_collecta_contacts(raw_contacts: list[dict]) -> list[CustomerUpsertIt
 
     logger.info("prepare_collecta_contacts — prepared: %d CIs with phones", len(result))
     return result
+
+
+def prepare_collecta_directions(raw_directions: list[dict]) -> list[CustomerUpsertItem]:
+    """Transform raw Collecta /directions records (per-client) into CustomerUpsertItem list."""
+    directions_by_ci: dict[str, list[dict]] = defaultdict(list)
+    for row in raw_directions:
+        ci = clean_identification(str(row.get("client_ci", "")))
+        if ci:
+            directions_by_ci[ci].append(row)
+
+    result: list[CustomerUpsertItem] = []
+    for ci, rows in directions_by_ci.items():
+        addresses: list[AddressItem] = []
+        seen: set[tuple] = set()
+        for row in rows:
+            parts = [
+                standardize_text(row.get("direction")),
+                standardize_text(row.get("neighborhood")),
+                standardize_text(row.get("parish")),
+            ]
+            address_line = " ".join(filter(None, parts)) or None
+            if not address_line:
+                continue
+            province     = standardize_text(row.get("province")) or None
+            city         = standardize_text(row.get("canton")) or None
+            raw_type     = str(row.get("type", "")).upper()
+            address_type = _ADDRESS_TYPE_MAP.get(raw_type, raw_type or None)
+            key = (address_line, city)
+            if key in seen:
+                continue
+            seen.add(key)
+            addresses.append(AddressItem(
+                address_line=address_line[:499],
+                province=province,
+                city=city,
+                address_type=address_type,
+                source="Collecta",
+            ))
+        if addresses:
+            result.append(CustomerUpsertItem(identification=ci, addresses=addresses))
+
+    logger.info("prepare_collecta_directions — prepared: %d CIs with addresses", len(result))
+    return result
+
+
 
 

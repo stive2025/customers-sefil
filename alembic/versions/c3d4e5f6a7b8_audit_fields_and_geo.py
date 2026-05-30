@@ -41,26 +41,48 @@ _AUDIT_COLS = [
 ]
 
 
+def _add_if_not_exists(table: str, col_name: str, col_def: str) -> None:
+    op.execute(
+        f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col_name} {col_def}"
+    )
+
+
 def upgrade() -> None:
     # ── collection_phones ─────────────────────────────────────────────────────
-    op.add_column('collection_phones',
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.text('true')))
-    for col in _AUDIT_COLS:
-        op.add_column('collection_phones', col)
+    _add_if_not_exists('collection_phones', 'is_active',      'BOOLEAN NOT NULL DEFAULT TRUE')
+    _add_if_not_exists('collection_phones', 'created_by',     'VARCHAR(100)')
+    _add_if_not_exists('collection_phones', 'created_source', 'VARCHAR(50)')
+    _add_if_not_exists('collection_phones', 'updated_at',     'TIMESTAMPTZ')
+    _add_if_not_exists('collection_phones', 'updated_by',     'VARCHAR(100)')
+    _add_if_not_exists('collection_phones', 'updated_source', 'VARCHAR(50)')
+    _add_if_not_exists('collection_phones', 'deleted_at',     'TIMESTAMPTZ')
+    _add_if_not_exists('collection_phones', 'deleted_by',     'VARCHAR(100)')
+    _add_if_not_exists('collection_phones', 'deleted_source', 'VARCHAR(50)')
 
     # ── collection_addresses ──────────────────────────────────────────────────
-    op.add_column('collection_addresses',
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.text('true')))
-    op.add_column('collection_addresses', sa.Column('canton',       sa.String(100), nullable=True))
-    op.add_column('collection_addresses', sa.Column('parish',       sa.String(100), nullable=True))
-    op.add_column('collection_addresses', sa.Column('neighborhood', sa.String(100), nullable=True))
-    for col in _AUDIT_COLS:
-        op.add_column('collection_addresses', col)
+    _add_if_not_exists('collection_addresses', 'is_active',      'BOOLEAN NOT NULL DEFAULT TRUE')
+    _add_if_not_exists('collection_addresses', 'canton',         'VARCHAR(100)')
+    _add_if_not_exists('collection_addresses', 'parish',         'VARCHAR(100)')
+    _add_if_not_exists('collection_addresses', 'neighborhood',   'VARCHAR(100)')
+    _add_if_not_exists('collection_addresses', 'created_by',     'VARCHAR(100)')
+    _add_if_not_exists('collection_addresses', 'created_source', 'VARCHAR(50)')
+    _add_if_not_exists('collection_addresses', 'updated_at',     'TIMESTAMPTZ')
+    _add_if_not_exists('collection_addresses', 'updated_by',     'VARCHAR(100)')
+    _add_if_not_exists('collection_addresses', 'updated_source', 'VARCHAR(50)')
+    _add_if_not_exists('collection_addresses', 'deleted_at',     'TIMESTAMPTZ')
+    _add_if_not_exists('collection_addresses', 'deleted_by',     'VARCHAR(100)')
+    _add_if_not_exists('collection_addresses', 'deleted_source', 'VARCHAR(50)')
 
     # ── collection_emails ─────────────────────────────────────────────────────
     # is_active already exists on this table
-    for col in _AUDIT_COLS:
-        op.add_column('collection_emails', col)
+    _add_if_not_exists('collection_emails', 'created_by',     'VARCHAR(100)')
+    _add_if_not_exists('collection_emails', 'created_source', 'VARCHAR(50)')
+    _add_if_not_exists('collection_emails', 'updated_at',     'TIMESTAMPTZ')
+    _add_if_not_exists('collection_emails', 'updated_by',     'VARCHAR(100)')
+    _add_if_not_exists('collection_emails', 'updated_source', 'VARCHAR(50)')
+    _add_if_not_exists('collection_emails', 'deleted_at',     'TIMESTAMPTZ')
+    _add_if_not_exists('collection_emails', 'deleted_by',     'VARCHAR(100)')
+    _add_if_not_exists('collection_emails', 'deleted_source', 'VARCHAR(50)')
 
 
 def downgrade() -> None:

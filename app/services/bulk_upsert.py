@@ -52,6 +52,7 @@ def _merge_phones(customer: Customer, phones: list[PhoneItem], db: Session) -> N
                 phone_type=item.phone_type,
                 country_code=item.country_code,
                 source=item.source,
+                created_source=item.source,
                 calls_effective=item.calls_effective,
                 calls_not_effective=item.calls_not_effective,
             )
@@ -73,8 +74,14 @@ def _merge_addresses(customer: Customer, addresses: list[AddressItem], db: Sessi
             address_line=item.address_line,
             province=item.province,
             city=item.city,
+            canton=item.canton,
+            parish=item.parish,
+            neighborhood=item.neighborhood,
             address_type=item.address_type,
+            latitude=item.latitude,
+            longitude=item.longitude,
             source=item.source,
+            created_source=item.source,
         )
         db.add(addr)
         customer.addresses.append(addr)
@@ -91,6 +98,7 @@ def _merge_emails(customer: Customer, emails: list[EmailItem], db: Session) -> N
             email_address=item.email_address,
             is_active=item.is_active,
             source=item.source,
+            created_source=item.source,
         )
         db.add(email)
         customer.emails.append(email)

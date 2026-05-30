@@ -21,7 +21,12 @@ class AddressItem(BaseModel):
     address_line: str = Field(..., max_length=500)
     province: Optional[str] = Field(None, max_length=100)
     city: Optional[str] = Field(None, max_length=100)
+    canton: Optional[str] = Field(None, max_length=100)
+    parish: Optional[str] = Field(None, max_length=100)
+    neighborhood: Optional[str] = Field(None, max_length=100)
     address_type: Optional[str] = Field(None, max_length=30)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     source: str = Field(..., max_length=50)
 
 

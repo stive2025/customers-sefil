@@ -12,27 +12,36 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # ---------------------------------------------------------------------------
+# Shared soft-delete body
+# ---------------------------------------------------------------------------
+
+class SoftDeleteBody(BaseModel):
+    deleted_by: Optional[str] = Field(None, max_length=100)
+    deleted_source: Optional[str] = Field(None, max_length=50)
+
+
+# ---------------------------------------------------------------------------
 # CollectionPhone
 # ---------------------------------------------------------------------------
 
 class CollectionPhoneBase(BaseModel):
-    phone_number: str = Field(
-        ..., max_length=20, description="Local phone number", examples=["0991234567"]
-    )
-    country_code: Optional[str] = Field(
-        default="+593", max_length=5, description="Country dialing code, e.g. +593"
-    )
-    phone_type: Optional[str] = Field(
-        None, max_length=20, description="MOBILE, HOME, WORK"
-    )
-    source: str = Field(
-        default="Manual", max_length=50, description="Origin system: Collecta, DATA SEFIL, Manual, etc."
-    )
+    phone_number: str = Field(..., max_length=20, examples=["0991234567"])
+    country_code: Optional[str] = Field(default="+593", max_length=5)
+    phone_type: Optional[str] = Field(None, max_length=20)
+    source: str = Field(default="Manual", max_length=50)
 
 
 class CollectionPhoneCreate(CollectionPhoneBase):
-    """Schema for creating a phone record. customer_id is injected from the path parameter."""
-    pass
+    created_by: Optional[str] = Field(None, max_length=100)
+    created_source: Optional[str] = Field(None, max_length=50)
+
+
+class CollectionPhoneUpdate(BaseModel):
+    phone_number: Optional[str] = Field(None, max_length=20)
+    phone_type: Optional[str] = Field(None, max_length=20)
+    country_code: Optional[str] = Field(None, max_length=5)
+    updated_by: Optional[str] = Field(None, max_length=100)
+    updated_source: Optional[str] = Field(None, max_length=50)
 
 
 class CollectionPhoneResponse(CollectionPhoneBase):
@@ -42,6 +51,15 @@ class CollectionPhoneResponse(CollectionPhoneBase):
     customer_id: int
     calls_effective: Optional[int] = None
     calls_not_effective: Optional[int] = None
+    is_active: bool = True
+    created_by: Optional[str] = None
+    created_source: Optional[str] = None
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
+    updated_source: Optional[str] = None
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[str] = None
+    deleted_source: Optional[str] = None
     created_at: datetime
 
 
@@ -50,22 +68,35 @@ class CollectionPhoneResponse(CollectionPhoneBase):
 # ---------------------------------------------------------------------------
 
 class CollectionAddressBase(BaseModel):
-    address_line: str = Field(
-        ..., max_length=500, description="Full street address including number"
-    )
+    address_line: str = Field(..., max_length=500)
     province: Optional[str] = Field(None, max_length=100)
     city: Optional[str] = Field(None, max_length=100)
-    address_type: Optional[str] = Field(
-        None, max_length=30, description="HOME, WORK, REFERENCE"
-    )
-    source: str = Field(
-        default="Manual", max_length=50, description="Origin system: Collecta, DATA SEFIL, Manual, etc."
-    )
+    canton: Optional[str] = Field(None, max_length=100)
+    parish: Optional[str] = Field(None, max_length=100)
+    neighborhood: Optional[str] = Field(None, max_length=100)
+    address_type: Optional[str] = Field(None, max_length=30)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    source: str = Field(default="Manual", max_length=50)
 
 
 class CollectionAddressCreate(CollectionAddressBase):
-    """Schema for creating an address record."""
-    pass
+    created_by: Optional[str] = Field(None, max_length=100)
+    created_source: Optional[str] = Field(None, max_length=50)
+
+
+class CollectionAddressUpdate(BaseModel):
+    address_line: Optional[str] = Field(None, max_length=500)
+    province: Optional[str] = Field(None, max_length=100)
+    city: Optional[str] = Field(None, max_length=100)
+    canton: Optional[str] = Field(None, max_length=100)
+    parish: Optional[str] = Field(None, max_length=100)
+    neighborhood: Optional[str] = Field(None, max_length=100)
+    address_type: Optional[str] = Field(None, max_length=30)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    updated_by: Optional[str] = Field(None, max_length=100)
+    updated_source: Optional[str] = Field(None, max_length=50)
 
 
 class CollectionAddressResponse(CollectionAddressBase):
@@ -73,6 +104,15 @@ class CollectionAddressResponse(CollectionAddressBase):
 
     id: int
     customer_id: int
+    is_active: bool = True
+    created_by: Optional[str] = None
+    created_source: Optional[str] = None
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
+    updated_source: Optional[str] = None
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[str] = None
+    deleted_source: Optional[str] = None
     created_at: datetime
 
 
@@ -81,16 +121,21 @@ class CollectionAddressResponse(CollectionAddressBase):
 # ---------------------------------------------------------------------------
 
 class CollectionEmailBase(BaseModel):
-    email_address: EmailStr = Field(..., description="Valid email address")
-    is_active: bool = Field(default=True, description="Whether this email is currently active")
-    source: str = Field(
-        default="Manual", max_length=50, description="Origin system: Collecta, DATA SEFIL, Manual, etc."
-    )
+    email_address: EmailStr = Field(...)
+    is_active: bool = Field(default=True)
+    source: str = Field(default="Manual", max_length=50)
 
 
 class CollectionEmailCreate(CollectionEmailBase):
-    """Schema for creating an email record."""
-    pass
+    created_by: Optional[str] = Field(None, max_length=100)
+    created_source: Optional[str] = Field(None, max_length=50)
+
+
+class CollectionEmailUpdate(BaseModel):
+    email_address: Optional[EmailStr] = None
+    is_active: Optional[bool] = None
+    updated_by: Optional[str] = Field(None, max_length=100)
+    updated_source: Optional[str] = Field(None, max_length=50)
 
 
 class CollectionEmailResponse(CollectionEmailBase):
@@ -98,4 +143,12 @@ class CollectionEmailResponse(CollectionEmailBase):
 
     id: int
     customer_id: int
+    created_by: Optional[str] = None
+    created_source: Optional[str] = None
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None
+    updated_source: Optional[str] = None
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[str] = None
+    deleted_source: Optional[str] = None
     created_at: datetime

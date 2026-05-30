@@ -32,7 +32,7 @@ from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerRespo
 from app.schemas.relationships import CustomerRelationshipResponse
 from app.services.data_cleaning import clean_phone_number
 
-router = APIRouter(tags=["Customers"], dependencies=[Depends(get_api_key)])
+router = APIRouter(dependencies=[Depends(get_api_key)])
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +111,7 @@ class BatchRequest(BaseModel):
 
 @router.post(
     "/",
+    tags=["Información"],
     response_model=CustomerResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Crear un nuevo cliente",
@@ -144,7 +145,7 @@ def create_customer(payload: CustomerCreate, db: Session = Depends(get_db)) -> C
 # GET / — Listar clientes
 # ---------------------------------------------------------------------------
 
-@router.get("/", response_model=List[CustomerResponse], summary="Listar todos los clientes")
+@router.get("/", tags=["Información"], response_model=List[CustomerResponse], summary="Listar todos los clientes")
 def list_customers(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
@@ -159,6 +160,7 @@ def list_customers(
 
 @router.get(
     "/search",
+    tags=["Información"],
     response_model=IdentificationListResponse,
     summary="Buscar clientes por nombre o geografía",
     description=(
@@ -219,6 +221,7 @@ def search_customers(
 
 @router.post(
     "/batch",
+    tags=["Información"],
     response_model=List[CustomerResponseFull],
     summary="Obtener múltiples clientes por cédulas (batch)",
     description=(
@@ -251,6 +254,7 @@ def batch_customers(
 
 @router.get(
     "/by-phone/{phone_number}",
+    tags=["Información"],
     response_model=CustomerResponse,
     summary="Buscar cliente por número de teléfono",
 )
@@ -276,7 +280,7 @@ def get_customer_by_phone(phone_number: str, db: Session = Depends(get_db)) -> C
 # GET /{identification} — Datos básicos
 # ---------------------------------------------------------------------------
 
-@router.get("/{identification}", response_model=CustomerResponse, summary="Obtener cliente por cédula o RUC")
+@router.get("/{identification}", tags=["Información"], response_model=CustomerResponse, summary="Obtener cliente por cédula o RUC")
 def get_customer(identification: str, db: Session = Depends(get_db)) -> Customer:
     return _get_customer_or_404(identification, db)
 
@@ -287,6 +291,7 @@ def get_customer(identification: str, db: Session = Depends(get_db)) -> Customer
 
 @router.get(
     "/{identification}/full",
+    tags=["Información"],
     response_model=CustomerResponseFull,
     summary="Obtener cliente con todas sus relaciones",
 )
@@ -314,7 +319,7 @@ def get_customer_full(identification: str, db: Session = Depends(get_db)) -> Cus
 # PHONES — GET / POST / PATCH / DELETE
 # ---------------------------------------------------------------------------
 
-@router.get("/{identification}/phones", response_model=List[CollectionPhoneResponse],
+@router.get("/{identification}/phones", tags=["Teléfonos"], response_model=List[CollectionPhoneResponse],
             summary="Listar teléfonos de un cliente")
 def list_customer_phones(
     identification: str,
@@ -328,7 +333,7 @@ def list_customer_phones(
     return list(db.execute(stmt).scalars().all())
 
 
-@router.post("/{identification}/phones", response_model=CollectionPhoneResponse,
+@router.post("/{identification}/phones", tags=["Teléfonos"], response_model=CollectionPhoneResponse,
              status_code=status.HTTP_201_CREATED, summary="Agregar teléfono")
 def add_customer_phone(
     identification: str,
@@ -357,7 +362,7 @@ def add_customer_phone(
     return phone
 
 
-@router.patch("/{identification}/phones/{phone_id}", response_model=CollectionPhoneResponse,
+@router.patch("/{identification}/phones/{phone_id}", tags=["Teléfonos"], response_model=CollectionPhoneResponse,
               summary="Actualizar teléfono")
 def update_customer_phone(
     identification: str,
@@ -374,7 +379,7 @@ def update_customer_phone(
     return phone
 
 
-@router.delete("/{identification}/phones/{phone_id}", status_code=status.HTTP_200_OK,
+@router.delete("/{identification}/phones/{phone_id}", tags=["Teléfonos"], status_code=status.HTTP_200_OK,
                response_model=CollectionPhoneResponse, summary="Inactivar teléfono (soft delete)")
 def delete_customer_phone(
     identification: str,
@@ -396,7 +401,7 @@ def delete_customer_phone(
 # EMAILS — GET / POST / PATCH / DELETE
 # ---------------------------------------------------------------------------
 
-@router.get("/{identification}/emails", response_model=List[CollectionEmailResponse],
+@router.get("/{identification}/emails", tags=["Correos"], response_model=List[CollectionEmailResponse],
             summary="Listar correos de un cliente")
 def list_customer_emails(
     identification: str,
@@ -410,7 +415,7 @@ def list_customer_emails(
     return list(db.execute(stmt).scalars().all())
 
 
-@router.post("/{identification}/emails", response_model=CollectionEmailResponse,
+@router.post("/{identification}/emails", tags=["Correos"], response_model=CollectionEmailResponse,
              status_code=status.HTTP_201_CREATED, summary="Agregar correo")
 def add_customer_email(
     identification: str,
@@ -438,7 +443,7 @@ def add_customer_email(
     return email
 
 
-@router.patch("/{identification}/emails/{email_id}", response_model=CollectionEmailResponse,
+@router.patch("/{identification}/emails/{email_id}", tags=["Correos"], response_model=CollectionEmailResponse,
               summary="Actualizar correo")
 def update_customer_email(
     identification: str,
@@ -455,7 +460,7 @@ def update_customer_email(
     return email
 
 
-@router.delete("/{identification}/emails/{email_id}", status_code=status.HTTP_200_OK,
+@router.delete("/{identification}/emails/{email_id}", tags=["Correos"], status_code=status.HTTP_200_OK,
                response_model=CollectionEmailResponse, summary="Inactivar correo (soft delete)")
 def delete_customer_email(
     identification: str,
@@ -477,7 +482,7 @@ def delete_customer_email(
 # ADDRESSES — GET / POST / PATCH / DELETE
 # ---------------------------------------------------------------------------
 
-@router.get("/{identification}/addresses", response_model=List[CollectionAddressResponse],
+@router.get("/{identification}/addresses", tags=["Direcciones"], response_model=List[CollectionAddressResponse],
             summary="Listar direcciones de un cliente")
 def list_customer_addresses(
     identification: str,
@@ -491,7 +496,7 @@ def list_customer_addresses(
     return list(db.execute(stmt).scalars().all())
 
 
-@router.post("/{identification}/addresses", response_model=CollectionAddressResponse,
+@router.post("/{identification}/addresses", tags=["Direcciones"], response_model=CollectionAddressResponse,
              status_code=status.HTTP_201_CREATED, summary="Agregar dirección")
 def add_customer_address(
     identification: str,
@@ -520,7 +525,7 @@ def add_customer_address(
     return addr
 
 
-@router.patch("/{identification}/addresses/{address_id}", response_model=CollectionAddressResponse,
+@router.patch("/{identification}/addresses/{address_id}", tags=["Direcciones"], response_model=CollectionAddressResponse,
               summary="Actualizar dirección")
 def update_customer_address(
     identification: str,
@@ -537,7 +542,7 @@ def update_customer_address(
     return addr
 
 
-@router.delete("/{identification}/addresses/{address_id}", status_code=status.HTTP_200_OK,
+@router.delete("/{identification}/addresses/{address_id}", tags=["Direcciones"], status_code=status.HTTP_200_OK,
                response_model=CollectionAddressResponse, summary="Inactivar dirección (soft delete)")
 def delete_customer_address(
     identification: str,
@@ -559,7 +564,7 @@ def delete_customer_address(
 # RELATIONSHIPS — GET
 # ---------------------------------------------------------------------------
 
-@router.get("/{identification}/relationships", response_model=List[CustomerRelationshipResponse],
+@router.get("/{identification}/relationships", tags=["Relaciones Familiares"], response_model=List[CustomerRelationshipResponse],
             summary="Listar relaciones familiares")
 def list_customer_relationships(
     identification: str,
@@ -577,7 +582,7 @@ def list_customer_relationships(
 # PATCH /{identification} — Actualización parcial del cliente
 # ---------------------------------------------------------------------------
 
-@router.patch("/{identification}", response_model=CustomerResponse,
+@router.patch("/{identification}", tags=["Información"], response_model=CustomerResponse,
               summary="Actualizar parcialmente un cliente")
 def update_customer(
     identification: str,
@@ -596,7 +601,7 @@ def update_customer(
 # DELETE /{identification} — Eliminar cliente (cascade físico)
 # ---------------------------------------------------------------------------
 
-@router.delete("/{identification}", status_code=status.HTTP_204_NO_CONTENT,
+@router.delete("/{identification}", tags=["Información"], status_code=status.HTTP_204_NO_CONTENT,
                summary="Eliminar un cliente")
 def delete_customer(identification: str, db: Session = Depends(get_db)) -> None:
     cliente = _get_customer_or_404(identification, db)

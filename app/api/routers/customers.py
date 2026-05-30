@@ -20,10 +20,19 @@ from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerRespo
 from app.schemas.relationships import CustomerRelationshipResponse
 from app.services.data_cleaning import clean_phone_number
 
-# El prefix base "/api/v1/customers" se define en main.py al incluir el router.
-# dependencies=[Depends(get_api_key)] protege todos los endpoints del router
-# sin necesidad de añadir la dependencia manualmente en cada función.
 router = APIRouter(tags=["Customers"], dependencies=[Depends(get_api_key)])
+
+
+def _get_customer_or_404(identification: str, db: Session) -> Customer:
+    cliente = db.execute(
+        select(Customer).where(Customer.identification == identification)
+    ).scalar_one_or_none()
+    if not cliente:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cliente con identificación '{identification}' no encontrado.",
+        )
+    return cliente
 
 
 # ---------------------------------------------------------------------------
@@ -170,43 +179,20 @@ def get_customer_by_phone(
 
 
 # ---------------------------------------------------------------------------
-# GET /{customer_id} — Obtener cliente por ID interno
+# GET /{identification} — Obtener cliente por cédula / RUC
 # ---------------------------------------------------------------------------
 
 @router.get(
-    "/{customer_id}",
+    "/{identification}",
     response_model=CustomerResponse,
-    summary="Obtener cliente por ID",
+    summary="Obtener cliente por cédula o RUC",
     description="Retorna los datos básicos de un cliente. Retorna 404 si no existe.",
 )
 def get_customer(
-    customer_id: int,
+    identification: str,
     db: Session = Depends(get_db),
 ) -> Customer:
-    """Busca un Customer por su llave primaria."""
-    cliente = db.get(Customer, customer_id)
-    if not cliente:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Cliente con ID {customer_id} no encontrado.",
-        )
-    return cliente
-
-
-# ---------------------------------------------------------------------------
-# Helper interno
-# ---------------------------------------------------------------------------
-
-def _get_customer_or_404(identification: str, db: Session) -> Customer:
-    cliente = db.execute(
-        select(Customer).where(Customer.identification == identification)
-    ).scalar_one_or_none()
-    if not cliente:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Cliente con identificación '{identification}' no encontrado.",
-        )
-    return cliente
+    return _get_customer_or_404(identification, db)
 
 
 # ---------------------------------------------------------------------------

@@ -42,7 +42,8 @@
       "Bash(curl -s \"http://localhost:8002/api/v1/customers/by-phone/0991111222\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
       "Bash(curl -s -X POST \"http://localhost:8002/api/v1/sync/run/collecta\" -H \"X-API-Key: sk_live_collecta_9x8A2\")",
       "Bash(.\\\\venv\\\\Scripts\\\\Activate.ps1)",
-      "Bash(python -c \"import sync_manual; print\\('OK'\\)\")"
+      "Bash(python -c \"import sync_manual; print\\('OK'\\)\")",
+      "Bash(python -c \"from app.api.routers.customers import router; print\\(f'OK — {len\\(router.routes\\)} rutas'\\)\")"
     ]
   }
 }

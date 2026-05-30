@@ -170,32 +170,7 @@ def get_customer_by_phone(
 
 
 # ---------------------------------------------------------------------------
-# GET /by/{identification} — Obtener cliente por documento (cédula / RUC)
-# ---------------------------------------------------------------------------
-# Se usa el prefijo /by/ para evitar colisión con GET /{customer_id} (entero).
-
-@router.get(
-    "/by/{identification}",
-    response_model=CustomerResponse,
-    summary="Obtener cliente por documento",
-    description="Retorna el cliente exacto cuya cédula o RUC coincide. Retorna 404 si no existe.",
-)
-def get_customer_by_identification(
-    identification: str,
-    db: Session = Depends(get_db),
-) -> Customer:
-    stmt = select(Customer).where(Customer.identification == identification)
-    cliente = db.execute(stmt).scalar_one_or_none()
-    if not cliente:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Cliente con identificación '{identification}' no encontrado.",
-        )
-    return cliente
-
-
-# ---------------------------------------------------------------------------
-# GET /{customer_id} — Obtener cliente por ID (respuesta simple)
+# GET /{customer_id} — Obtener cliente por ID interno
 # ---------------------------------------------------------------------------
 
 @router.get(
@@ -219,11 +194,27 @@ def get_customer(
 
 
 # ---------------------------------------------------------------------------
-# GET /{customer_id}/full — Obtener cliente con todas sus relaciones
+# Helper interno
+# ---------------------------------------------------------------------------
+
+def _get_customer_or_404(identification: str, db: Session) -> Customer:
+    cliente = db.execute(
+        select(Customer).where(Customer.identification == identification)
+    ).scalar_one_or_none()
+    if not cliente:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cliente con identificación '{identification}' no encontrado.",
+        )
+    return cliente
+
+
+# ---------------------------------------------------------------------------
+# GET /{identification}/full — Obtener cliente con todas sus relaciones
 # ---------------------------------------------------------------------------
 
 @router.get(
-    "/{customer_id}/full",
+    "/{identification}/full",
     response_model=CustomerResponseFull,
     summary="Obtener cliente con todas sus relaciones",
     description=(
@@ -232,13 +223,12 @@ def get_customer(
     ),
 )
 def get_customer_full(
-    customer_id: int,
+    identification: str,
     db: Session = Depends(get_db),
 ) -> Customer:
-    """Busca un Customer por ID y carga todas sus relaciones."""
     stmt = (
         select(Customer)
-        .where(Customer.id == customer_id)
+        .where(Customer.identification == identification)
         .options(
             selectinload(Customer.phones),
             selectinload(Customer.addresses),
@@ -252,33 +242,31 @@ def get_customer_full(
     if not cliente:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Cliente con ID {customer_id} no encontrado.",
+            detail=f"Cliente con identificación '{identification}' no encontrado.",
         )
     return cliente
 
 
 # ---------------------------------------------------------------------------
-# GET /{customer_id}/phones — Teléfonos paginados
+# GET /{identification}/phones — Teléfonos paginados
 # ---------------------------------------------------------------------------
 
 @router.get(
-    "/{customer_id}/phones",
+    "/{identification}/phones",
     response_model=List[CollectionPhoneResponse],
     summary="Listar teléfonos de un cliente",
     description="Retorna los teléfonos del cliente con paginación. Ordenados por fecha de creación descendente.",
 )
 def list_customer_phones(
-    customer_id: int,
+    identification: str,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list:
-    if not db.get(Customer, customer_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Cliente con ID {customer_id} no encontrado.")
+    cliente = _get_customer_or_404(identification, db)
     stmt = (
         select(CollectionPhone)
-        .where(CollectionPhone.customer_id == customer_id)
+        .where(CollectionPhone.customer_id == cliente.id)
         .order_by(CollectionPhone.created_at.desc())
         .offset(skip).limit(limit)
     )
@@ -286,27 +274,25 @@ def list_customer_phones(
 
 
 # ---------------------------------------------------------------------------
-# GET /{customer_id}/emails — Correos paginados
+# GET /{identification}/emails — Correos paginados
 # ---------------------------------------------------------------------------
 
 @router.get(
-    "/{customer_id}/emails",
+    "/{identification}/emails",
     response_model=List[CollectionEmailResponse],
     summary="Listar correos de un cliente",
     description="Retorna los correos electrónicos del cliente con paginación.",
 )
 def list_customer_emails(
-    customer_id: int,
+    identification: str,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list:
-    if not db.get(Customer, customer_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Cliente con ID {customer_id} no encontrado.")
+    cliente = _get_customer_or_404(identification, db)
     stmt = (
         select(CollectionEmail)
-        .where(CollectionEmail.customer_id == customer_id)
+        .where(CollectionEmail.customer_id == cliente.id)
         .order_by(CollectionEmail.created_at.desc())
         .offset(skip).limit(limit)
     )
@@ -314,27 +300,25 @@ def list_customer_emails(
 
 
 # ---------------------------------------------------------------------------
-# GET /{customer_id}/addresses — Direcciones paginadas
+# GET /{identification}/addresses — Direcciones paginadas
 # ---------------------------------------------------------------------------
 
 @router.get(
-    "/{customer_id}/addresses",
+    "/{identification}/addresses",
     response_model=List[CollectionAddressResponse],
     summary="Listar direcciones de un cliente",
     description="Retorna las direcciones del cliente con paginación.",
 )
 def list_customer_addresses(
-    customer_id: int,
+    identification: str,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list:
-    if not db.get(Customer, customer_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Cliente con ID {customer_id} no encontrado.")
+    cliente = _get_customer_or_404(identification, db)
     stmt = (
         select(CollectionAddress)
-        .where(CollectionAddress.customer_id == customer_id)
+        .where(CollectionAddress.customer_id == cliente.id)
         .order_by(CollectionAddress.created_at.desc())
         .offset(skip).limit(limit)
     )
@@ -342,27 +326,25 @@ def list_customer_addresses(
 
 
 # ---------------------------------------------------------------------------
-# GET /{customer_id}/relationships — Relaciones familiares paginadas
+# GET /{identification}/relationships — Relaciones familiares paginadas
 # ---------------------------------------------------------------------------
 
 @router.get(
-    "/{customer_id}/relationships",
+    "/{identification}/relationships",
     response_model=List[CustomerRelationshipResponse],
     summary="Listar relaciones familiares de un cliente",
     description="Retorna las relaciones familiares del cliente con paginación.",
 )
 def list_customer_relationships(
-    customer_id: int,
+    identification: str,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list:
-    if not db.get(Customer, customer_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Cliente con ID {customer_id} no encontrado.")
+    cliente = _get_customer_or_404(identification, db)
     stmt = (
         select(CustomerRelationship)
-        .where(CustomerRelationship.customer_id == customer_id)
+        .where(CustomerRelationship.customer_id == cliente.id)
         .order_by(CustomerRelationship.id)
         .offset(skip).limit(limit)
     )
@@ -370,26 +352,24 @@ def list_customer_relationships(
 
 
 # ---------------------------------------------------------------------------
-# DELETE /{customer_id}/phones/{phone_id} — Eliminar teléfono
+# DELETE /{identification}/phones/{phone_id} — Eliminar teléfono
 # ---------------------------------------------------------------------------
 
 @router.delete(
-    "/{customer_id}/phones/{phone_id}",
+    "/{identification}/phones/{phone_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar un teléfono de un cliente",
     description="Elimina permanentemente un teléfono del cliente. Retorna 404 si el cliente o el teléfono no existen.",
 )
 def delete_customer_phone(
-    customer_id: int,
+    identification: str,
     phone_id: int,
     db: Session = Depends(get_db),
 ) -> None:
-    if not db.get(Customer, customer_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Cliente con ID {customer_id} no encontrado.")
+    cliente = _get_customer_or_404(identification, db)
     stmt = select(CollectionPhone).where(
         CollectionPhone.id == phone_id,
-        CollectionPhone.customer_id == customer_id,
+        CollectionPhone.customer_id == cliente.id,
     )
     phone = db.execute(stmt).scalar_one_or_none()
     if not phone:
@@ -400,28 +380,22 @@ def delete_customer_phone(
 
 
 # ---------------------------------------------------------------------------
-# POST /by/{identification}/phones — Agregar teléfono por cédula
+# POST /{identification}/phones — Agregar teléfono por cédula
 # ---------------------------------------------------------------------------
 
 @router.post(
-    "/by/{identification}/phones",
+    "/{identification}/phones",
     response_model=CollectionPhoneResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Agregar teléfono a un cliente por cédula",
-    description="Agrega un nuevo número de teléfono al cliente identificado por su cédula o RUC. Retorna 404 si no existe, 409 si el número ya está registrado.",
+    description="Agrega un nuevo número de teléfono al cliente. Retorna 404 si no existe, 409 si el número ya está registrado.",
 )
 def add_phone_by_identification(
     identification: str,
     payload: CollectionPhoneCreate,
     db: Session = Depends(get_db),
 ) -> CollectionPhone:
-    stmt = select(Customer).where(Customer.identification == identification)
-    cliente = db.execute(stmt).scalar_one_or_none()
-    if not cliente:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Cliente con identificación '{identification}' no encontrado.",
-        )
+    cliente = _get_customer_or_404(identification, db)
 
     duplicado = db.execute(
         select(CollectionPhone).where(
@@ -449,62 +423,42 @@ def add_phone_by_identification(
 
 
 # ---------------------------------------------------------------------------
-# PATCH /{customer_id} — Actualización parcial
+# PATCH /{identification} — Actualización parcial
 # ---------------------------------------------------------------------------
 
 @router.patch(
-    "/{customer_id}",
+    "/{identification}",
     response_model=CustomerResponse,
     summary="Actualizar parcialmente un cliente",
     description="Actualiza solo los campos proporcionados. Los campos omitidos no se modifican.",
 )
 def update_customer(
-    customer_id: int,
+    identification: str,
     payload: CustomerUpdate,
     db: Session = Depends(get_db),
 ) -> Customer:
-    """
-    Aplica una actualización parcial (PATCH) sobre un Customer existente.
-    Solo modifica los campos que vienen explícitamente en el body.
-    """
-    cliente = db.get(Customer, customer_id)
-    if not cliente:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Cliente con ID {customer_id} no encontrado.",
-        )
-
-    # Extraer solo los campos enviados (excluir los que no se enviaron)
-    campos_a_actualizar = payload.model_dump(exclude_unset=True)
-    for campo, valor in campos_a_actualizar.items():
+    cliente = _get_customer_or_404(identification, db)
+    for campo, valor in payload.model_dump(exclude_unset=True).items():
         setattr(cliente, campo, valor)
-
     db.commit()
     db.refresh(cliente)
     return cliente
 
 
 # ---------------------------------------------------------------------------
-# DELETE /{customer_id} — Eliminar cliente
+# DELETE /{identification} — Eliminar cliente
 # ---------------------------------------------------------------------------
 
 @router.delete(
-    "/{customer_id}",
+    "/{identification}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar un cliente",
     description="Elimina permanentemente un cliente y todos sus datos relacionados (cascade).",
 )
 def delete_customer(
-    customer_id: int,
+    identification: str,
     db: Session = Depends(get_db),
 ) -> None:
-    """Elimina un Customer por ID. Las relaciones se borran por CASCADE."""
-    cliente = db.get(Customer, customer_id)
-    if not cliente:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Cliente con ID {customer_id} no encontrado.",
-        )
-
+    cliente = _get_customer_or_404(identification, db)
     db.delete(cliente)
     db.commit()

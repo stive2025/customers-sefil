@@ -7,7 +7,7 @@ Uso:
   python sync_manual.py --source collecta
   python sync_manual.py --source all
 
-Variables de entorno requeridas (se leen de .env.worker automáticamente):
+Variables de entorno requeridas (se leen de .env.sync automáticamente):
   HOSTINGER_API_URL   URL base del API público  (ej. https://services.sefil.com.ec/customers/api/v1)
   HOSTINGER_API_KEY   API Key válida            (X-API-Key header)
   COLLECTA_API_URL    URL del endpoint /clients de Collecta

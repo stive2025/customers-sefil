@@ -14,9 +14,10 @@ El progreso se puede seguir con: docker logs <container> -f
 """
 import logging
 import os
-from typing import Annotated, List
+import uuid
+from typing import Annotated, Dict, List, Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -170,48 +171,84 @@ def _sync_leads() -> SyncRunResponse:
 
 
 # ---------------------------------------------------------------------------
-# POST /run/* — Endpoints de sincronización manual
+# Job tracking en memoria (requiere --workers 1 en Uvicorn)
 # ---------------------------------------------------------------------------
 
-@router.post(
-    "/run/collecta",
-    tags=["Sync"],
-    response_model=SyncRunResponse,
-    summary="Sync manual — Collecta",
-    description="Descarga clientes y contactos de Collecta y los persiste. Retorna estadísticas al finalizar.",
-)
-def run_collecta() -> SyncRunResponse:
-    return _sync_collecta()
+_JOBS: Dict[str, Optional[List[SyncRunResponse]]] = {}
 
 
-@router.post(
-    "/run/datasefil",
-    tags=["Sync"],
-    response_model=SyncRunResponse,
-    summary="Sync manual — DATA SEFIL",
-    description="Descarga todos los clientes de DATA SEFIL y los persiste. Retorna estadísticas al finalizar.",
-)
-def run_datasefil() -> SyncRunResponse:
-    return _sync_datasefil()
+class JobStartedResponse(BaseModel):
+    job_id: str
+    status: str = "running"
+    check_url: str
 
 
-@router.post(
-    "/run/leads",
-    tags=["Sync"],
-    response_model=SyncRunResponse,
-    summary="Sync manual — Leads",
-    description="Extrae clientes de la BD MySQL de Leads y los persiste. Retorna estadísticas al finalizar.",
-)
-def run_leads() -> SyncRunResponse:
-    return _sync_leads()
+def _start_job(fn, background_tasks: BackgroundTasks) -> JobStartedResponse:
+    job_id = uuid.uuid4().hex[:8]
+    _JOBS[job_id] = None
+
+    def _run():
+        try:
+            result = fn()
+            _JOBS[job_id] = result if isinstance(result, list) else [result]
+        except Exception as exc:
+            _JOBS[job_id] = [SyncRunResponse(source="ERROR", errors=[str(exc)])]
+
+    background_tasks.add_task(_run)
+    return JobStartedResponse(
+        job_id=job_id,
+        check_url=f"/api/v1/sync/status/{job_id}",
+    )
 
 
-@router.post(
-    "/run/all",
-    tags=["Sync"],
-    response_model=List[SyncRunResponse],
-    summary="Sync manual — Todas las fuentes",
-    description="Ejecuta el sync de Collecta + DATA SEFIL + Leads en secuencia. Retorna estadísticas por fuente.",
-)
-def run_all() -> List[SyncRunResponse]:
-    return [_sync_collecta(), _sync_datasefil(), _sync_leads()]
+# ---------------------------------------------------------------------------
+# POST /run/* — Inician sync en background y retornan job_id
+# ---------------------------------------------------------------------------
+
+@router.post("/run/collecta", tags=["Sync"], response_model=JobStartedResponse,
+             status_code=status.HTTP_202_ACCEPTED, summary="Sync manual — Collecta")
+def run_collecta(background_tasks: BackgroundTasks) -> JobStartedResponse:
+    return _start_job(_sync_collecta, background_tasks)
+
+
+@router.post("/run/datasefil", tags=["Sync"], response_model=JobStartedResponse,
+             status_code=status.HTTP_202_ACCEPTED, summary="Sync manual — DATA SEFIL")
+def run_datasefil(background_tasks: BackgroundTasks) -> JobStartedResponse:
+    return _start_job(_sync_datasefil, background_tasks)
+
+
+@router.post("/run/leads", tags=["Sync"], response_model=JobStartedResponse,
+             status_code=status.HTTP_202_ACCEPTED, summary="Sync manual — Leads")
+def run_leads(background_tasks: BackgroundTasks) -> JobStartedResponse:
+    return _start_job(lambda: [_sync_leads()], background_tasks)
+
+
+@router.post("/run/all", tags=["Sync"], response_model=JobStartedResponse,
+             status_code=status.HTTP_202_ACCEPTED, summary="Sync manual — Todas las fuentes")
+def run_all(background_tasks: BackgroundTasks) -> JobStartedResponse:
+    return _start_job(
+        lambda: [_sync_collecta(), _sync_datasefil(), _sync_leads()],
+        background_tasks,
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /status/{job_id} — Consultar resultado de un sync
+# ---------------------------------------------------------------------------
+
+class JobStatusResponse(BaseModel):
+    job_id: str
+    status: str                              # "running" | "completed"
+    results: Optional[List[SyncRunResponse]] = None
+
+
+@router.get("/status/{job_id}", tags=["Sync"], response_model=JobStatusResponse,
+            summary="Consultar estado/resultado de un sync")
+def get_sync_status(job_id: str) -> JobStatusResponse:
+    if job_id not in _JOBS:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Job '{job_id}' no encontrado.")
+    result = _JOBS[job_id]
+    if result is None:
+        return JobStatusResponse(job_id=job_id, status="running")
+    return JobStatusResponse(job_id=job_id, status="completed", results=result)

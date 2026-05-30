@@ -160,20 +160,24 @@ def bulk_upsert_customers(
 
     for item in customers:
         try:
-            stmt = (
-                select(Customer)
-                .where(Customer.identification == item.identification)
-                .options(
-                    selectinload(Customer.phones),
-                    selectinload(Customer.addresses),
-                    selectinload(Customer.emails),
-                    selectinload(Customer.financial_information),
-                    selectinload(Customer.relationships),
-                )
-            )
-            existing = db.execute(stmt).scalar_one_or_none()
-
+            # ── SAVEPOINT wraps the entire per-record operation ──
+            # This includes the SELECT so that if anything fails,
+            # we rollback to a clean state and can continue with
+            # the next record.
             with db.begin_nested():
+                stmt = (
+                    select(Customer)
+                    .where(Customer.identification == item.identification)
+                    .options(
+                        selectinload(Customer.phones),
+                        selectinload(Customer.addresses),
+                        selectinload(Customer.emails),
+                        selectinload(Customer.financial_information),
+                        selectinload(Customer.relationships),
+                    )
+                )
+                existing = db.execute(stmt).scalar_one_or_none()
+
                 if existing:
                     for attr in _DEMOGRAPHIC_FIELDS:
                         incoming = getattr(item, attr)
@@ -223,10 +227,19 @@ def bulk_upsert_customers(
                     result.created += 1
 
         except Exception as exc:
+            # ── The savepoint was already rolled back by begin_nested().__exit__
+            # when the exception propagated. However, if the exception happened
+            # outside the savepoint context, we must ensure the session is usable.
+            db.rollback()
             result.errors.append(f"{item.identification}: {exc}")
             logger.error("Upsert error for %s: %s", item.identification, exc, exc_info=True)
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error("Final commit failed: %s", exc, exc_info=True)
+        result.errors.append(f"commit: {exc}")
     logger.info(
         "Bulk upsert complete — created: %d | updated: %d | skipped: %d | errors: %d",
         result.created, result.updated, result.skipped, len(result.errors),

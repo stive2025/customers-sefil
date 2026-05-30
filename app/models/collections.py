@@ -27,7 +27,6 @@ class CollectionPhone(Base):
     phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
     country_code: Mapped[Optional[str]] = mapped_column(String(5), nullable=True, default="+593")
     phone_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="Manual")
     calls_effective: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
     calls_not_effective: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
     # ── Auditoría ──────────────────────────────────────────────────────────────

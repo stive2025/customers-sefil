@@ -352,7 +352,6 @@ def add_customer_phone(
         phone_number=payload.phone_number,
         phone_type=payload.phone_type,
         country_code=payload.country_code,
-        source=payload.source,
         created_by=payload.created_by,
         created_source=payload.created_source,
     )

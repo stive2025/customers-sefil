@@ -28,7 +28,6 @@ class CollectionPhoneBase(BaseModel):
     phone_number: str = Field(..., max_length=20, examples=["0991234567"])
     country_code: Optional[str] = Field(default="+593", max_length=5)
     phone_type: Optional[str] = Field(None, max_length=20)
-    source: str = Field(default="Manual", max_length=50)
 
 
 class CollectionPhoneCreate(CollectionPhoneBase):

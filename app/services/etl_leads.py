@@ -221,7 +221,7 @@ def prepare_leads_customers() -> list[CustomerUpsertItem]:
                     phone_number=local_number,
                     phone_type=p["phone_type"],
                     country_code="+593",
-                    source="Leads",
+                    created_source="Leads",
                 ))
                 seen_phones.add(local_number)
 

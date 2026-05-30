@@ -134,7 +134,7 @@ def _build_phones(phones_raw: list[dict], only_active: bool = True) -> list[Phon
             phone_number=local_number,
             phone_type=phone_type,
             country_code="+593",
-            source="Collecta",
+            created_source="Collecta",
             calls_effective=phone_data.get("calls_effective"),
             calls_not_effective=phone_data.get("calls_not_effective"),
         ))

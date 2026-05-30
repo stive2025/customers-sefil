@@ -12,9 +12,9 @@ class PhoneItem(BaseModel):
     phone_number: str = Field(..., max_length=20)
     phone_type: Optional[str] = Field(None, max_length=20)
     country_code: str = Field(default="+593", max_length=5)
-    source: str = Field(..., max_length=50)
     calls_effective: Optional[int] = None
     calls_not_effective: Optional[int] = None
+    created_source: Optional[str] = Field(None, max_length=50)
 
 
 class AddressItem(BaseModel):

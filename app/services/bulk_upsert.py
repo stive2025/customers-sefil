@@ -51,8 +51,7 @@ def _merge_phones(customer: Customer, phones: list[PhoneItem], db: Session) -> N
                 phone_number=item.phone_number,
                 phone_type=item.phone_type,
                 country_code=item.country_code,
-                source=item.source,
-                created_source=item.source,
+                created_source=item.created_source,
                 calls_effective=item.calls_effective,
                 calls_not_effective=item.calls_not_effective,
             )

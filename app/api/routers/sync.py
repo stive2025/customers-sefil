@@ -14,8 +14,9 @@ El progreso se puede seguir con: docker logs <container> -f
 """
 import logging
 import os
+from typing import Annotated, List
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -30,7 +31,6 @@ from app.services.bulk_upsert import bulk_upsert_customers
 from app.services.etl_collecta import (
     prepare_collecta_contacts,
     prepare_collecta_customers,
-    prepare_collecta_directions,
 )
 from app.services.etl_datasefil import prepare_datasefil_customers
 from app.services.etl_fetcher import fetch_all_pages, fetch_collecta_page, fetch_datasefil_page
@@ -92,77 +92,81 @@ def bulk_upsert(
 
 
 # ---------------------------------------------------------------------------
-# Helpers internos de sync (background tasks)
+# Helpers internos de sync (síncronos — devuelven estadísticas reales)
 # ---------------------------------------------------------------------------
 
-class SyncStartedResponse(BaseModel):
-    message: str
+class SyncRunResponse(BaseModel):
     source: str
+    created: int = 0
+    updated: int = 0
+    skipped: int = 0
+    errors: List[str] = []
 
 
-def _upsert_in_background(customers: list, label: str) -> None:
-    """Persiste en BD usando una sesión propia (independiente del request)."""
+def _run_upsert(customers: list, label: str) -> BulkUpsertResponse:
+    """Persiste en BD y retorna las estadísticas del lote."""
     if not customers:
         logger.warning("[%s] No hay registros para persistir.", label)
-        return
+        return BulkUpsertResponse()
     db: Session = SessionLocal()
     try:
         result = bulk_upsert_customers(customers, db)
         logger.info("[%s] SYNC COMPLETADO — created: %d | updated: %d | skipped: %d | errors: %d",
                     label, result.created, result.updated, result.skipped, len(result.errors))
+        return result
     except Exception as exc:
         db.rollback()
         logger.error("[%s] Error al persistir: %s", label, exc, exc_info=True)
+        return BulkUpsertResponse(errors=[str(exc)])
     finally:
         db.close()
 
 
-def _bg_collecta() -> None:
-    url   = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
-    token = os.getenv("COLLECTA_TOKEN", "")
+def _accumulate(total: SyncRunResponse, partial: BulkUpsertResponse) -> None:
+    total.created += partial.created
+    total.updated += partial.updated
+    total.skipped += partial.skipped
+    total.errors  += partial.errors
+
+
+def _sync_collecta() -> SyncRunResponse:
+    result = SyncRunResponse(source="Collecta")
+    url     = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
+    token   = os.getenv("COLLECTA_TOKEN", "")
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-    base = url.rsplit("/", 1)[0]
+    base    = url.rsplit("/", 1)[0]
 
     for label, endpoint, prepare_fn in [
-        ("Collecta-clients",    url,                    prepare_collecta_customers),
-        ("Collecta-contacts",   f"{base}/contacts",     prepare_collecta_contacts),
-        ("Collecta-directions", f"{base}/directions",   prepare_collecta_directions),
+        ("Collecta-clients",  url,                prepare_collecta_customers),
+        ("Collecta-contacts", f"{base}/contacts", prepare_collecta_contacts),
+        # /directions requiere client_ci individual — no permite descarga masiva
     ]:
         raw = fetch_all_pages(fetch_collecta_page, endpoint, headers, label)
         if raw:
-            _upsert_in_background(prepare_fn(raw), label)
+            _accumulate(result, _run_upsert(prepare_fn(raw), label))
+    return result
 
 
-def _bg_datasefil() -> None:
+def _sync_datasefil() -> SyncRunResponse:
+    result  = SyncRunResponse(source="DATA SEFIL")
     url     = os.getenv("DATASEFIL_API_URL", "http://172.20.1.105:8000/api/clients")
     token   = os.getenv("DATASEFIL_TOKEN", "")
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-
-    raw = fetch_all_pages(fetch_datasefil_page, url, headers, "DATA SEFIL")
+    raw     = fetch_all_pages(fetch_datasefil_page, url, headers, "DATA SEFIL")
     if raw:
-        _upsert_in_background(prepare_datasefil_customers(raw), "DATA SEFIL")
+        _accumulate(result, _run_upsert(prepare_datasefil_customers(raw), "DATA SEFIL"))
+    return result
 
 
-def _bg_leads() -> None:
+def _sync_leads() -> SyncRunResponse:
+    result = SyncRunResponse(source="Leads")
     try:
         customers = prepare_leads_customers()
-        _upsert_in_background(customers, "Leads")
+        _accumulate(result, _run_upsert(customers, "Leads"))
     except Exception as exc:
         logger.error("[Leads] Error en extracción MySQL: %s", exc, exc_info=True)
-
-
-def _bg_all() -> None:
-    for label, fn in [
-        ("Collecta",   _bg_collecta),
-        ("DATA SEFIL", _bg_datasefil),
-        ("Leads",      _bg_leads),
-    ]:
-        logger.info("=== [%s] Iniciando sync ===", label)
-        try:
-            fn()
-        except Exception as exc:
-            logger.error("[%s] Error inesperado: %s", label, exc, exc_info=True)
-    logger.info("=== SYNC MANUAL COMPLETADO ===")
+        result.errors.append(str(exc))
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -171,47 +175,43 @@ def _bg_all() -> None:
 
 @router.post(
     "/run/collecta",
-    response_model=SyncStartedResponse,
-    status_code=status.HTTP_202_ACCEPTED,
+    tags=["Sync"],
+    response_model=SyncRunResponse,
     summary="Sync manual — Collecta",
-    description="Descarga clientes, contactos y direcciones de Collecta y los persiste en la BD. Corre en background.",
+    description="Descarga clientes y contactos de Collecta y los persiste. Retorna estadísticas al finalizar.",
 )
-def run_collecta(background_tasks: BackgroundTasks) -> SyncStartedResponse:
-    background_tasks.add_task(_bg_collecta)
-    return SyncStartedResponse(message="Sync de Collecta iniciado. Revisa los logs para el progreso.", source="Collecta")
+def run_collecta() -> SyncRunResponse:
+    return _sync_collecta()
 
 
 @router.post(
     "/run/datasefil",
-    response_model=SyncStartedResponse,
-    status_code=status.HTTP_202_ACCEPTED,
+    tags=["Sync"],
+    response_model=SyncRunResponse,
     summary="Sync manual — DATA SEFIL",
-    description="Descarga todos los clientes de DATA SEFIL y los persiste en la BD. Corre en background.",
+    description="Descarga todos los clientes de DATA SEFIL y los persiste. Retorna estadísticas al finalizar.",
 )
-def run_datasefil(background_tasks: BackgroundTasks) -> SyncStartedResponse:
-    background_tasks.add_task(_bg_datasefil)
-    return SyncStartedResponse(message="Sync de DATA SEFIL iniciado. Revisa los logs para el progreso.", source="DATA SEFIL")
+def run_datasefil() -> SyncRunResponse:
+    return _sync_datasefil()
 
 
 @router.post(
     "/run/leads",
-    response_model=SyncStartedResponse,
-    status_code=status.HTTP_202_ACCEPTED,
+    tags=["Sync"],
+    response_model=SyncRunResponse,
     summary="Sync manual — Leads",
-    description="Extrae clientes de la BD MySQL de Leads y los persiste. Corre en background.",
+    description="Extrae clientes de la BD MySQL de Leads y los persiste. Retorna estadísticas al finalizar.",
 )
-def run_leads(background_tasks: BackgroundTasks) -> SyncStartedResponse:
-    background_tasks.add_task(_bg_leads)
-    return SyncStartedResponse(message="Sync de Leads iniciado. Revisa los logs para el progreso.", source="Leads")
+def run_leads() -> SyncRunResponse:
+    return _sync_leads()
 
 
 @router.post(
     "/run/all",
-    response_model=SyncStartedResponse,
-    status_code=status.HTTP_202_ACCEPTED,
+    tags=["Sync"],
+    response_model=List[SyncRunResponse],
     summary="Sync manual — Todas las fuentes",
-    description="Ejecuta el sync completo de Collecta + DATA SEFIL + Leads en secuencia. Corre en background.",
+    description="Ejecuta el sync de Collecta + DATA SEFIL + Leads en secuencia. Retorna estadísticas por fuente.",
 )
-def run_all(background_tasks: BackgroundTasks) -> SyncStartedResponse:
-    background_tasks.add_task(_bg_all)
-    return SyncStartedResponse(message="Sync completo iniciado (Collecta + DATA SEFIL + Leads). Revisa los logs.", source="ALL")
+def run_all() -> List[SyncRunResponse]:
+    return [_sync_collecta(), _sync_datasefil(), _sync_leads()]

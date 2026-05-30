@@ -32,7 +32,6 @@ load_dotenv(".env.sync")
 from app.services.etl_collecta import (
     prepare_collecta_contacts,
     prepare_collecta_customers,
-    prepare_collecta_directions,
 )
 from app.services.etl_datasefil import prepare_datasefil_customers
 from app.services.etl_fetcher import fetch_all_pages, fetch_collecta_page, fetch_datasefil_page
@@ -127,7 +126,7 @@ def run_collecta() -> None:
     for label, endpoint, prepare_fn in [
         ("Collecta-clients",    url,                  prepare_collecta_customers),
         ("Collecta-contacts",   f"{base}/contacts",   prepare_collecta_contacts),
-        ("Collecta-directions", f"{base}/directions", prepare_collecta_directions),
+        # Collecta /directions ahora requiere client_ci por registro — no permite descarga masiva
     ]:
         logger.info("=== [%s] Iniciando ===", label)
         raw = fetch_all_pages(fetch_collecta_page, endpoint, headers, label)

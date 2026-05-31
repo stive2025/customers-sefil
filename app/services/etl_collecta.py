@@ -5,18 +5,12 @@ En la arquitectura híbrida este módulo ya NO escribe en la base de datos.
 Sólo transforma los registros crudos en listas de CustomerUpsertItem que el
 Worker enviará posteriormente al endpoint POST /sync/bulk-upsert de Hostinger.
 
-Payload esperado por registro (campos confirmados en app/api/api_collecta.json):
-{
-    "ci":                "1712345678",
-    "name":              "Juan Carlos Pérez López",
-    "type":              "natural",
-    "gender":            "M",
-    "civil_status":      "soltero",
-    "economic_activity": "Comerciante",
-    "phones": [
-        {"phone_number": "0991234567", "phone_type": "CELULAR", "phone_status": "ACTIVE"}
-    ]
-}
+Endpoints consumidos y estructura de respuesta (todos usan paginación estándar):
+  GET /api/clients      → { success, message, data: { data: [{ci, name, gender, ...}], last_page } }
+  GET /api/contacts     → { success, message, data: { data: [{phone_number, phone_type, calls_effective, ..., client_ci?}], last_page } }
+  GET /api/directions   → { success, message, data: { data: [{direction, canton, client_ci, ...}], last_page } }
+
+NOTA: /api/clients NO retorna teléfonos embebidos. Los teléfonos vienen de /api/contacts.
 """
 
 import logging
@@ -144,13 +138,64 @@ def _build_phones(phones_raw: list[dict], only_active: bool = True) -> list[Phon
 
 
 # ---------------------------------------------------------------------------
+# Private address builder (shared by individual and bulk directions paths)
+# ---------------------------------------------------------------------------
+
+def _build_directions_for_ci(ci: str, rows: list[dict]) -> list[CustomerUpsertItem]:
+    """Build a single CustomerUpsertItem with addresses for one known CI."""
+    addresses: list[AddressItem] = []
+    seen: set[tuple] = set()
+    for row in rows:
+        parts = [
+            standardize_text(row.get("direction")),
+            standardize_text(row.get("neighborhood")),
+            standardize_text(row.get("parish")),
+        ]
+        address_line = " ".join(filter(None, parts)) or None
+        if not address_line:
+            continue
+        province     = standardize_text(row.get("province")) or None
+        city         = standardize_text(row.get("canton")) or None
+        raw_type     = str(row.get("type", "")).upper()
+        address_type = _ADDRESS_TYPE_MAP.get(raw_type, raw_type or None)
+        key = (address_line, city)
+        if key in seen:
+            continue
+        seen.add(key)
+        # latitude/longitude come as strings from the Collecta API
+        try:
+            lat = float(row["latitude"]) if row.get("latitude") else None
+        except (ValueError, TypeError):
+            lat = None
+        try:
+            lng = float(row["longitude"]) if row.get("longitude") else None
+        except (ValueError, TypeError):
+            lng = None
+        addresses.append(AddressItem(
+            address_line=address_line[:499],
+            province=province,
+            city=city,
+            address_type=address_type,
+            latitude=lat,
+            longitude=lng,
+            source="Collecta",
+        ))
+    if not addresses:
+        return []
+    return [CustomerUpsertItem(identification=ci, addresses=addresses)]
+
+
+# ---------------------------------------------------------------------------
 # Public prepare functions — return CustomerUpsertItem lists, no DB needed
 # ---------------------------------------------------------------------------
 
 def prepare_collecta_customers(raw_data: list[dict]) -> list[CustomerUpsertItem]:
     """
     Transform raw Collecta /clients records into CustomerUpsertItem list.
-    Phones from each record's `phones` array are embedded inline.
+
+    NOTE: The /api/clients endpoint does NOT embed phones. Phones come from
+    the separate /api/contacts endpoint and are synced independently.
+    Fields per record: id, name, ci, type, gender, civil_status, economic_activity.
     """
     result: list[CustomerUpsertItem] = []
     skipped = 0
@@ -161,10 +206,7 @@ def prepare_collecta_customers(raw_data: list[dict]) -> list[CustomerUpsertItem]
             skipped += 1
             continue
 
-        result.append(CustomerUpsertItem(
-            **fields,
-            phones=_build_phones(raw.get("phones", [])),
-        ))
+        result.append(CustomerUpsertItem(**fields))
 
     logger.info(
         "prepare_collecta_customers — prepared: %d | skipped: %d",
@@ -173,8 +215,35 @@ def prepare_collecta_customers(raw_data: list[dict]) -> list[CustomerUpsertItem]
     return result
 
 
-def prepare_collecta_contacts(raw_contacts: list[dict]) -> list[CustomerUpsertItem]:
-    """Transform raw Collecta /contacts records (per-client) into CustomerUpsertItem list."""
+def prepare_collecta_contacts(
+    raw_contacts: list[dict],
+    known_ci: str | None = None,
+) -> list[CustomerUpsertItem]:
+    """
+    Transform raw Collecta /contacts records into CustomerUpsertItem list.
+
+    The /api/contacts endpoint returns per-contact records with fields:
+        id, name, phone_number, phone_type, phone_status, calls_effective,
+        calls_not_effective, client_id, credit_id.
+    When filtering by client_ci (individual sync), all returned records belong
+    to the same client — use `known_ci` to avoid an extra lookup.
+    For bulk download (no filter), the API does not include client_ci in the
+    record itself, so contacts can only be grouped by client_id (no CI available).
+    Use the individual endpoint per-client to get contacts with full CI mapping.
+    """
+    if known_ci:
+        # Individual sync path: all contacts belong to known_ci
+        ci = clean_identification(known_ci)
+        if not ci:
+            logger.warning("prepare_collecta_contacts — invalid known_ci: %r", known_ci)
+            return []
+        phones = _build_phones(raw_contacts, only_active=True)
+        if not phones:
+            return []
+        logger.info("prepare_collecta_contacts — prepared 1 CI (%s) with %d phones", ci, len(phones))
+        return [CustomerUpsertItem(identification=ci, phones=phones)]
+
+    # Bulk sync path: group by client_ci field in the response
     contacts_by_ci: dict[str, list[dict]] = defaultdict(list)
     for contact in raw_contacts:
         ci = clean_identification(str(contact.get("client_ci", "")))
@@ -191,8 +260,28 @@ def prepare_collecta_contacts(raw_contacts: list[dict]) -> list[CustomerUpsertIt
     return result
 
 
-def prepare_collecta_directions(raw_directions: list[dict]) -> list[CustomerUpsertItem]:
-    """Transform raw Collecta /directions records (per-client) into CustomerUpsertItem list."""
+def prepare_collecta_directions(
+    raw_directions: list[dict],
+    known_ci: str | None = None,
+) -> list[CustomerUpsertItem]:
+    """
+    Transform raw Collecta /directions records into CustomerUpsertItem list.
+
+    The /api/directions endpoint returns records with fields:
+        id, client_id, direction, type, province, canton, parish, neighborhood,
+        latitude, longitude, client_name, client_ci.
+    `client_ci` IS included in the list response, so bulk sync works correctly.
+    When using individual sync, pass `known_ci` as a safety fallback.
+    """
+    if known_ci:
+        # Individual sync path: all directions belong to known_ci
+        ci = clean_identification(known_ci)
+        if not ci:
+            logger.warning("prepare_collecta_directions — invalid known_ci: %r", known_ci)
+            return []
+        return _build_directions_for_ci(ci, raw_directions)
+
+    # Bulk sync path: group by client_ci field included in each record
     directions_by_ci: dict[str, list[dict]] = defaultdict(list)
     for row in raw_directions:
         ci = clean_identification(str(row.get("client_ci", "")))
@@ -201,38 +290,8 @@ def prepare_collecta_directions(raw_directions: list[dict]) -> list[CustomerUpse
 
     result: list[CustomerUpsertItem] = []
     for ci, rows in directions_by_ci.items():
-        addresses: list[AddressItem] = []
-        seen: set[tuple] = set()
-        for row in rows:
-            parts = [
-                standardize_text(row.get("direction")),
-                standardize_text(row.get("neighborhood")),
-                standardize_text(row.get("parish")),
-            ]
-            address_line = " ".join(filter(None, parts)) or None
-            if not address_line:
-                continue
-            province     = standardize_text(row.get("province")) or None
-            city         = standardize_text(row.get("canton")) or None
-            raw_type     = str(row.get("type", "")).upper()
-            address_type = _ADDRESS_TYPE_MAP.get(raw_type, raw_type or None)
-            key = (address_line, city)
-            if key in seen:
-                continue
-            seen.add(key)
-            addresses.append(AddressItem(
-                address_line=address_line[:499],
-                province=province,
-                city=city,
-                address_type=address_type,
-                source="Collecta",
-            ))
-        if addresses:
-            result.append(CustomerUpsertItem(identification=ci, addresses=addresses))
+        items = _build_directions_for_ci(ci, rows)
+        result.extend(items)
 
     logger.info("prepare_collecta_directions — prepared: %d CIs with addresses", len(result))
     return result
-
-
-
-

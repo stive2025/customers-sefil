@@ -14,11 +14,16 @@ _MAX_WORKERS = 5
 
 
 def fetch_collecta_page(url: str, headers: dict, page: int) -> tuple[list[dict], int]:
+    """
+    Collecta API response structure:
+        { "success": true, "message": "...", "data": { "data": [...], "last_page": 5, ... } }
+    The outer "data" is the pagination wrapper; the inner "data" is the records array.
+    """
     resp = requests.get(url, headers=headers,
                         params={"page": page, "per_page": _PER_PAGE}, timeout=30)
     resp.raise_for_status()
-    block = resp.json().get("result", {})
-    return block.get("data", []), block.get("last_page", 1)
+    pagination = resp.json().get("data", {})
+    return pagination.get("data", []), pagination.get("last_page", 1)
 
 
 def fetch_datasefil_page(url: str, headers: dict, page: int) -> tuple[list[dict], int]:

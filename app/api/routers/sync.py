@@ -136,10 +136,12 @@ def _sync_collecta() -> SyncRunResponse:
     url     = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
     token   = os.getenv("COLLECTA_TOKEN", "")
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-    # /contacts y /directions requieren client_identification individual — no permiten descarga masiva
+    base    = url.rsplit("/", 1)[0]  # https://collapi.sefil.com.ec/public/api
 
     for label, endpoint, prepare_fn in [
-        ("Collecta-clients", url, prepare_collecta_customers),
+        ("Collecta-clients",    url,                      prepare_collecta_customers),
+        ("Collecta-contacts",   f"{base}/contacts",       prepare_collecta_contacts),
+        ("Collecta-directions", f"{base}/directions",     prepare_collecta_directions),
     ]:
         raw = fetch_all_pages(fetch_collecta_page, endpoint, headers, label)
         if raw:
@@ -230,10 +232,13 @@ def run_collecta_by_identification(identification: str) -> SyncRunResponse:
 
     import requests as _req
 
-    for label, endpoint, param_key, prepare_fn in [
-        ("clients",    url,                    "ci",                     prepare_collecta_customers),
-        ("contacts",   f"{base}/contacts",     "client_identification",  prepare_collecta_contacts),
-        ("directions", f"{base}/directions",   "client_ci",              prepare_collecta_directions),
+    for label, endpoint, param_key, prepare_fn, fn_kwargs in [
+        # /clients:    filter by ci
+        ("clients",    url,                  "ci",        prepare_collecta_customers, {}),
+        # /contacts:   filter by client_ci (NOT client_identification — that param doesn't exist)
+        ("contacts",   f"{base}/contacts",   "client_ci", prepare_collecta_contacts,  {"known_ci": identification}),
+        # /directions: filter by client_ci
+        ("directions", f"{base}/directions", "client_ci", prepare_collecta_directions, {"known_ci": identification}),
     ]:
         try:
             resp = _req.get(
@@ -243,9 +248,11 @@ def run_collecta_by_identification(identification: str) -> SyncRunResponse:
             )
             resp.raise_for_status()
             body = resp.json()
-            raw  = body.get("result", {}).get("data", body.get("data", []))
+            # Collecta API structure: { success, message, data: { data: [...], last_page, ... } }
+            pagination = body.get("data", {})
+            raw = pagination.get("data", []) if isinstance(pagination, dict) else []
             if raw:
-                _accumulate(result, _run_upsert(prepare_fn(raw), f"Collecta-{label}/{identification}"))
+                _accumulate(result, _run_upsert(prepare_fn(raw, **fn_kwargs), f"Collecta-{label}/{identification}"))
         except Exception as exc:
             logger.warning("[Collecta-%s/%s] Error: %s", label, identification, exc)
             result.errors.append(f"{label}: {exc}")

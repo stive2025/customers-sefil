@@ -136,12 +136,12 @@ def _sync_collecta() -> SyncRunResponse:
     url     = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
     token   = os.getenv("COLLECTA_TOKEN", "")
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-    base    = url.rsplit("/", 1)[0]  # https://collapi.sefil.com.ec/public/api
 
+    # NOTA: /contacts y /directions retornan 422 sin filtro obligatorio —
+    # no permiten descarga masiva. Se sincronizan por cédula individual
+    # usando POST /sync/run/collecta/{identification}.
     for label, endpoint, prepare_fn in [
-        ("Collecta-clients",    url,                      prepare_collecta_customers),
-        ("Collecta-contacts",   f"{base}/contacts",       prepare_collecta_contacts),
-        ("Collecta-directions", f"{base}/directions",     prepare_collecta_directions),
+        ("Collecta-clients", url, prepare_collecta_customers),
     ]:
         raw = fetch_all_pages(fetch_collecta_page, endpoint, headers, label)
         if raw:
@@ -207,7 +207,8 @@ def _start_job(fn, background_tasks: BackgroundTasks) -> JobStartedResponse:
 # ---------------------------------------------------------------------------
 
 @router.post("/run/collecta", tags=["Sync"], response_model=JobStartedResponse,
-             status_code=status.HTTP_202_ACCEPTED, summary="Sync masivo — Collecta (solo /clients)")
+             status_code=status.HTTP_202_ACCEPTED,
+             summary="Sync masivo — Collecta (/clients). Teléfonos y direcciones: usar /run/collecta/{ci}")
 def run_collecta(background_tasks: BackgroundTasks) -> JobStartedResponse:
     return _start_job(_sync_collecta, background_tasks)
 

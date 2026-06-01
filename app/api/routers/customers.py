@@ -30,6 +30,7 @@ from app.schemas.collections import (
 )
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerResponseFull, CustomerUpdate
 from app.schemas.relationships import CustomerRelationshipResponse
+from app.schemas.sync import RelationshipItem
 from app.services.data_cleaning import clean_phone_number
 
 router = APIRouter(dependencies=[Depends(get_api_key)])
@@ -560,7 +561,7 @@ def delete_customer_address(
 
 
 # ---------------------------------------------------------------------------
-# RELATIONSHIPS — GET
+# RELATIONSHIPS — GET / POST
 # ---------------------------------------------------------------------------
 
 @router.get("/{identification}/relationships", tags=["Relaciones Familiares"], response_model=List[CustomerRelationshipResponse],
@@ -575,6 +576,45 @@ def list_customer_relationships(
     stmt = (select(CustomerRelationship).where(CustomerRelationship.customer_id == cliente.id)
             .order_by(CustomerRelationship.id).offset(skip).limit(limit))
     return list(db.execute(stmt).scalars().all())
+
+
+@router.post("/{identification}/relationships", tags=["Relaciones Familiares"], response_model=CustomerRelationshipResponse,
+             status_code=status.HTTP_201_CREATED, summary="Agregar relación familiar")
+def add_customer_relationship(
+    identification: str,
+    payload: RelationshipItem,
+    db: Session = Depends(get_db),
+) -> CustomerRelationship:
+    cliente = _get_customer_or_404(identification, db)
+    
+    # Evitar duplicados exactos si envían misma identificación y relación
+    if payload.related_identification:
+        existente = db.execute(select(CustomerRelationship).where(
+            CustomerRelationship.customer_id == cliente.id,
+            CustomerRelationship.relationship_type == payload.relationship_type,
+            CustomerRelationship.related_identification == payload.related_identification,
+        )).scalar_one_or_none()
+        if existente:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"La relación '{payload.relationship_type}' con identificación '{payload.related_identification}' ya está registrada."
+            )
+
+    rel = CustomerRelationship(
+        customer_id=cliente.id,
+        relationship_type=payload.relationship_type,
+        related_identification=payload.related_identification,
+        related_name=payload.related_name,
+        related_birth_date=payload.related_birth_date,
+        related_gender=payload.related_gender,
+        related_civil_status=payload.related_civil_status,
+        related_death_date=payload.related_death_date,
+        source=payload.source,
+    )
+    db.add(rel)
+    db.commit()
+    db.refresh(rel)
+    return rel
 
 
 # ---------------------------------------------------------------------------

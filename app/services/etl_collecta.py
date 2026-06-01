@@ -22,6 +22,7 @@ from app.services.data_cleaning import (
     clean_gender,
     clean_identification,
     clean_phone_number,
+    infer_phone_type,
     standardize_text,
 )
 
@@ -33,13 +34,13 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _CONTACT_TYPE_MAP: dict[str, str] = {
-    "CELULAR":    "MOBILE",
-    "FIJO":       "HOME",
-    "DOMICILIO":  "HOME",
-    "TRABAJO":    "WORK",
-    "GARANTE":    "GUARANTOR",
-    "REFERENCIA": "REFERENCE",
-    "DEUDOR":     "DEBTOR",
+    "CELULAR":    "MOVIL",
+    "MOVIL":      "MOVIL",
+    "MÓVIL":      "MOVIL",
+    "FIJO":       "FIJO",
+    "DOMICILIO":  "FIJO",
+    "TELEFONO":   "FIJO",
+    "TRABAJO":    "FIJO",
 }
 
 _ADDRESS_TYPE_MAP: dict[str, str] = {
@@ -122,7 +123,11 @@ def _build_phones(phones_raw: list[dict], only_active: bool = True) -> list[Phon
             continue
 
         raw_type   = str(phone_data.get("phone_type", "")).upper()
-        phone_type = _CONTACT_TYPE_MAP.get(raw_type, raw_type or None)
+        
+        # Mapear desde el diccionario estricto, si falla inferir por el número
+        phone_type = _CONTACT_TYPE_MAP.get(raw_type)
+        if not phone_type:
+            phone_type = infer_phone_type(local_number)
 
         result.append(PhoneItem(
             phone_number=local_number,

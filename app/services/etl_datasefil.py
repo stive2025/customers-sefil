@@ -35,6 +35,8 @@ from app.services.data_cleaning import (
     clean_gender,
     clean_identification,
     clean_phone_number,
+    clean_salary,
+    infer_phone_type,
     standardize_text,
 )
 
@@ -110,14 +112,13 @@ def _extract_phones(contacts_raw: list[dict]) -> list[PhoneItem]:
             continue
 
         raw_type = str(contact.get("phone_type", "")).upper()
-        if "CELULAR" in raw_type:
-            phone_type = "MOBILE"
-        elif "FIJO" in raw_type:
-            phone_type = "HOME"
-        elif raw_type in ("ACTUALIZADO", "UPDATED", "OTRO"):
-            phone_type = None
+        if "CELULAR" in raw_type or "MOVIL" in raw_type or "MÓVIL" in raw_type:
+            phone_type = "MOVIL"
+        elif "FIJO" in raw_type or "TELEFONO" in raw_type or "DOMICILIO" in raw_type or "TRABAJO" in raw_type:
+            phone_type = "FIJO"
         else:
-            phone_type = raw_type or None
+            # Si manda basura o algo no reconocido, inferir el tipo basado en el número
+            phone_type = infer_phone_type(local_number)
 
         result.append(PhoneItem(
             phone_number=local_number,

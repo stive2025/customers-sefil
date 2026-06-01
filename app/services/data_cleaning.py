@@ -116,6 +116,29 @@ def clean_phone_number(telefono: str | None) -> str:
     return numero
 
 
+def infer_phone_type(numero_limpio: str) -> str | None:
+    """
+    Infiere el tipo de teléfono (MOVIL o FIJO) en base a su patrón ecuatoriano.
+    - MOVIL: 10 dígitos empezando con '09'.
+    - FIJO: 9 dígitos empezando con código provincial, o 7 dígitos (local sin prefijo).
+    
+    Debe llamarse DESPUÉS de haber pasado el número por clean_phone_number.
+    """
+    if not numero_limpio:
+        return None
+        
+    if len(numero_limpio) == 10 and numero_limpio.startswith("09"):
+        return "MOVIL"
+        
+    if len(numero_limpio) == 9 and numero_limpio.startswith(("02", "03", "04", "05", "06", "07")):
+        return "FIJO"
+        
+    if len(numero_limpio) == 7:
+        return "FIJO"
+        
+    return None
+
+
 def clean_identification(identificacion: str | None) -> str:
     """
     Valida y limpia un número de cédula ecuatoriana o RUC.

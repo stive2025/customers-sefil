@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.collections import CollectionAddress, CollectionEmail, CollectionPhone
 from app.models.customer import Customer
 from app.models.financial import FinancialInformation
+from app.models.relationships import CustomerRelationship
 from app.services.data_cleaning import (
     clean_civil_status,
     clean_date,
@@ -156,6 +157,37 @@ def _sync_financial(customer: Customer, salary_raw: float | str | int | None, db
         db.add(FinancialInformation(customer_id=customer.id, salary=salary))
 
 
+def _sync_relationships(customer: Customer, parents_raw: list[dict], source: str, db: Session) -> None:
+    existing: set[tuple] = {
+        (r.relationship_type, r.related_identification or r.related_name)
+        for r in customer.relationships
+    }
+    for parent in parents_raw:
+        rel_type = str(parent.get("type") or parent.get("relationship_type") or "").upper().strip()
+        if not rel_type:
+            continue
+            
+        related_id = clean_identification(parent.get("identification") or parent.get("related_identification")) or None
+        related_name = standardize_text(parent.get("name") or parent.get("related_name")) or None
+        key = (rel_type, related_id or related_name)
+        
+        if key in existing:
+            continue
+            
+        db.add(CustomerRelationship(
+            customer_id=customer.id,
+            relationship_type=rel_type,
+            related_identification=related_id,
+            related_name=related_name,
+            related_birth_date=clean_date(parent.get("birth") or parent.get("related_birth_date")),
+            related_gender=clean_gender(parent.get("gender") or parent.get("related_gender")),
+            related_civil_status=clean_civil_status(parent.get("state_civil") or parent.get("related_civil_status")),
+            related_death_date=clean_date(parent.get("death") or parent.get("related_death_date")),
+            source=source,
+        ))
+        existing.add(key)
+
+
 # ---------------------------------------------------------------------------
 # Punto de entrada principal
 # ---------------------------------------------------------------------------
@@ -201,6 +233,7 @@ def sync_external_customer(db: Session, payload: dict, source: str) -> Customer:
             selectinload(Customer.addresses),
             selectinload(Customer.emails),
             selectinload(Customer.financial_information),
+            selectinload(Customer.relationships),
         )
     )
     customer = db.execute(stmt).scalar_one_or_none()
@@ -220,17 +253,20 @@ def sync_external_customer(db: Session, payload: dict, source: str) -> Customer:
         customer.addresses = []
         customer.emails = []
         customer.financial_information = None
+        customer.relationships = []
         logger.info("Creando cliente %s desde fuente %r", identification, source)
 
     # "phones" (Collecta) y "contacts" (DATA SEFIL) apuntan al mismo concepto
     phones_raw    = payload.get("phones") or payload.get("contacts") or []
     addresses_raw = payload.get("addresses") or []
     emails_raw    = payload.get("emails")   or []
+    parents_raw   = payload.get("parents")  or payload.get("relationships") or []
 
     _sync_phones(customer, phones_raw, source, db)
     _sync_addresses(customer, addresses_raw, source, db)
     _sync_emails(customer, emails_raw, source, db)
     _sync_financial(customer, payload.get("salary"), db)
+    _sync_relationships(customer, parents_raw, source, db)
 
     db.commit()
     db.refresh(customer)

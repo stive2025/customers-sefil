@@ -267,6 +267,43 @@ def run_datasefil(background_tasks: BackgroundTasks) -> JobStartedResponse:
     return _start_job(_sync_datasefil, background_tasks)
 
 
+@router.post(
+    "/run/datasefil/{identification}",
+    tags=["Sync"],
+    response_model=SyncRunResponse,
+    summary="Sync individual — DATA SEFIL por cédula",
+    description=(
+        "Sincroniza un cliente específico desde DATA SEFIL y actualiza su genoma, "
+        "teléfonos, direcciones, correos e información básica."
+    ),
+)
+def run_datasefil_by_identification(identification: str) -> SyncRunResponse:
+    url     = os.getenv("DATASEFIL_API_URL", "http://172.20.1.105:8000/api/clients")
+    token   = os.getenv("DATASEFIL_TOKEN", "")
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    result  = SyncRunResponse(source=f"DATA SEFIL/{identification}")
+
+    import requests as _req
+
+    try:
+        resp = _req.get(
+            url, headers=headers,
+            # Se asume que la API soporta filtrar por identification
+            params={"identification": identification, "page": 1, "per_page": 100},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        raw = body.get("data", [])
+        if raw:
+            _accumulate(result, _run_upsert(prepare_datasefil_customers(raw), f"DATA SEFIL/{identification}"))
+    except Exception as exc:
+        logger.warning("[DATA SEFIL/%s] Error: %s", identification, exc)
+        result.errors.append(str(exc))
+
+    return result
+
+
 @router.post("/run/leads", tags=["Sync"], response_model=JobStartedResponse,
              status_code=status.HTTP_202_ACCEPTED, summary="Sync manual — Leads")
 def run_leads(background_tasks: BackgroundTasks) -> JobStartedResponse:

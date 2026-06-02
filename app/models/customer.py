@@ -62,6 +62,9 @@ class Customer(Base):
     profession: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True
     )
+    economic_activity: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True, comment="Economic activity of the customer"
+    )
 
     # --- Timestamps ---
     created_at: Mapped[datetime] = mapped_column(

@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 _DEMOGRAPHIC_FIELDS: tuple[str, ...] = (
     "gender", "birth_date", "birth_place",
-    "nationality", "civil_status", "profession",
+    "nationality", "civil_status", "profession", "economic_activity"
 )
 
 
@@ -210,6 +210,7 @@ def bulk_upsert_customers(
                         nationality=item.nationality,
                         civil_status=item.civil_status,
                         profession=item.profession,
+                        economic_activity=item.economic_activity,
                     )
                     db.add(new_customer)
                     db.flush()

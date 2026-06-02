@@ -128,6 +128,7 @@ def create_customer(payload: CustomerCreate, db: Session = Depends(get_db)) -> C
         nationality=payload.nationality,
         civil_status=payload.civil_status,
         profession=payload.profession,
+        economic_activity=payload.economic_activity,
     )
     db.add(nuevo_cliente)
     try:

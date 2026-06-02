@@ -103,7 +103,8 @@ def _map_collecta_record(raw: dict) -> dict | None:
         "last_name":      _trunc(last_name, 199),
         "gender":         clean_gender(raw.get("gender")),
         "civil_status":   clean_civil_status(raw.get("civil_status")),
-        "profession":     _trunc(standardize_text(raw.get("economic_activity")) or None, 499),
+        "profession":     None,
+        "economic_activity": _trunc(standardize_text(raw.get("economic_activity")) or None, 499),
     }
 
 

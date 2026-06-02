@@ -39,6 +39,7 @@ class CustomerBase(BaseModel):
         None, max_length=30, description="SINGLE, MARRIED, DIVORCED, WIDOWED"
     )
     profession: Optional[str] = Field(None, max_length=100, description="Customer's profession")
+    economic_activity: Optional[str] = Field(None, max_length=500, description="Customer's economic activity")
 
 
 # ---------------------------------------------------------------------------

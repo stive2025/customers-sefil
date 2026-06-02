@@ -411,3 +411,16 @@ def get_sync_status(job_id: str) -> JobStatusResponse:
     if result is None:
         return JobStatusResponse(job_id=job_id, status="running")
     return JobStatusResponse(job_id=job_id, status="completed", results=result)
+
+@router.get("/debug/collecta/{identification}", tags=["Sync"])
+def debug_collecta(identification: str):
+    import requests as _req
+    url = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
+    token = os.getenv("COLLECTA_TOKEN", "")
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    try:
+        resp = _req.get(url, headers=headers, params={"ci": identification})
+        return resp.json()
+    except Exception as exc:
+        return {"error": str(exc)}
+

@@ -261,6 +261,78 @@ def run_collecta_by_identification(identification: str) -> SyncRunResponse:
     return result
 
 
+def _backfill_collecta_basics(db: Session) -> SyncRunResponse:
+    import requests as _req
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from sqlalchemy import select
+    from app.models.customer import Customer
+    from app.services.etl_collecta import prepare_collecta_customers
+    from app.services.bulk_upsert import bulk_upsert_customers
+
+    result = SyncRunResponse(source="Collecta-Backfill")
+    url = os.getenv("COLLECTA_API_URL", "https://collapi.sefil.com.ec/public/api/clients")
+    token = os.getenv("COLLECTA_TOKEN", "")
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+
+    # Obtener todas las cédulas
+    identifications = db.execute(select(Customer.identification)).scalars().all()
+    logger.info("Iniciando backfill basico para %d clientes en Collecta", len(identifications))
+
+    def _fetch_one(ci: str):
+        try:
+            resp = _req.get(url, headers=headers, params={"ci": ci, "page": 1, "per_page": 10}, timeout=10)
+            if resp.status_code == 200:
+                pagination = resp.json().get("data", {})
+                return pagination.get("data", []) if isinstance(pagination, dict) else []
+        except Exception:
+            pass
+        return []
+
+    # Procesar en lotes pequeños para no saturar memoria
+    batch_size = 500
+    for i in range(0, len(identifications), batch_size):
+        batch_cis = identifications[i:i+batch_size]
+        raw_items = []
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(_fetch_one, ci): ci for ci in batch_cis}
+            for future in as_completed(futures):
+                try:
+                    data = future.result()
+                    if data:
+                        raw_items.extend(data)
+                except Exception as exc:
+                    logger.warning("Error fetching CI %s: %s", futures[future], exc)
+        
+        if raw_items:
+            items_to_upsert = prepare_collecta_customers(raw_items)
+            if items_to_upsert:
+                try:
+                    partial = bulk_upsert_customers(items_to_upsert, db)
+                    _accumulate(result, partial)
+                except Exception as exc:
+                    db.rollback()
+                    result.errors.append(f"Batch {i}: {exc}")
+
+    return result
+
+
+@router.post("/run/collecta/backfill-basics", tags=["Sync"], response_model=JobStartedResponse,
+             status_code=status.HTTP_202_ACCEPTED,
+             summary="Backfill masivo — Collecta (Rellena actividad economica consultando 1x1)")
+def run_collecta_backfill(background_tasks: BackgroundTasks) -> JobStartedResponse:
+    # Necesitamos pasar una nueva sesión porque background_tasks no debería usar la de Depends
+    # Usaremos SessionLocal internamente
+    def _run_backfill():
+        from app.db.session import SessionLocal
+        local_db = SessionLocal()
+        try:
+            return _backfill_collecta_basics(local_db)
+        finally:
+            local_db.close()
+            
+    return _start_job(_run_backfill, background_tasks)
+
+
 @router.post("/run/datasefil", tags=["Sync"], response_model=JobStartedResponse,
              status_code=status.HTTP_202_ACCEPTED, summary="Sync manual — DATA SEFIL")
 def run_datasefil(background_tasks: BackgroundTasks) -> JobStartedResponse:

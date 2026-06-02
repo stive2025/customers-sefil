@@ -36,11 +36,8 @@ def fetch_datasefil_page(url: str, headers: dict, page: int) -> tuple[list[dict]
 
 def fetch_all_pages(fetch_fn, url: str, headers: dict, label: str) -> list[dict]:
     """Descarga todas las páginas en paralelo. Retorna lista vacía si falla la primera."""
-    try:
-        first_records, last_page = fetch_fn(url, headers, 1)
-    except Exception as exc:
-        logger.error("[%s] Cannot fetch page 1: %s", label, exc)
-        return []
+    # Let exceptions bubble up so the caller can record them in result.errors
+    first_records, last_page = fetch_fn(url, headers, 1)
 
     logger.info("[%s] %d page(s) to download (per_page=%d)", label, last_page, _PER_PAGE)
     all_records = list(first_records)

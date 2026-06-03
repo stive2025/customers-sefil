@@ -59,9 +59,6 @@ class Customer(Base):
     civil_status: Mapped[Optional[str]] = mapped_column(
         String(30), nullable=True, comment="SINGLE, MARRIED, DIVORCED, WIDOWED"
     )
-    profession: Mapped[Optional[str]] = mapped_column(
-        String(500), nullable=True
-    )
     economic_activity: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True, comment="Economic activity of the customer"
     )

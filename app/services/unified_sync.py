@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 _MERGEABLE_FIELDS: tuple[str, ...] = (
     "gender", "birth_date", "birth_place",
-    "civil_status", "nationality", "profession", "economic_activity"
+    "civil_status", "nationality", "economic_activity"
 )
 
 
@@ -86,8 +86,7 @@ def _build_customer_fields(
         "birth_place":  standardize_text(payload.get("birth_place") or payload.get("place_birth")) or None,
         "civil_status": clean_civil_status(payload.get("civil_status") or payload.get("state_civil")),
         "nationality":  standardize_text(payload.get("nationality")) or None,
-        "profession":   standardize_text(payload.get("profession")) or None,
-        "economic_activity": standardize_text(payload.get("economic_activity")) or None,
+        "economic_activity": standardize_text(payload.get("economic_activity")) or standardize_text(payload.get("profession")) or None,
     }
 
 

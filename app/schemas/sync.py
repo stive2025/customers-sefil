@@ -61,7 +61,6 @@ class CustomerUpsertItem(BaseModel):
     birth_place: Optional[str] = Field(None, max_length=200)
     nationality: Optional[str] = Field(None, max_length=100)
     civil_status: Optional[str] = Field(None, max_length=30)
-    profession: Optional[str] = Field(None, max_length=500)
     economic_activity: Optional[str] = Field(None, max_length=500)
     salary: Optional[float] = None
     phones: List[PhoneItem] = []

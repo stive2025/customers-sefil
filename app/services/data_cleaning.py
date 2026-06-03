@@ -415,7 +415,7 @@ async def migrate_system_data(
                 birth_place=payload_validado.birth_place,
                 nationality=payload_validado.nationality,
                 civil_status=payload_validado.civil_status,
-                profession=payload_validado.profession,
+                economic_activity=payload_validado.economic_activity,
             )
             db.add(nuevo_cliente)
 

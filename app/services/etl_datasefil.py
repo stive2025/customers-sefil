@@ -98,8 +98,7 @@ def _map_sefil_record(raw: dict) -> dict | None:
         "birth_place":    _trunc(standardize_text(raw.get("place_birth")) or None, 199),
         "civil_status":   clean_civil_status(raw.get("state_civil")),
         "nationality":    _trunc(standardize_text(raw.get("nationality")) or None, 99),
-        "profession":     _trunc(standardize_text(raw.get("profession")) or None, 499),
-        "economic_activity": _trunc(standardize_text(raw.get("economic_activity")) or None, 499),
+        "economic_activity": _trunc(standardize_text(raw.get("economic_activity")) or standardize_text(raw.get("profession")) or None, 499),
     }
 
 

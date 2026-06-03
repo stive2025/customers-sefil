@@ -38,7 +38,6 @@ class CustomerBase(BaseModel):
     civil_status: Optional[str] = Field(
         None, max_length=30, description="SINGLE, MARRIED, DIVORCED, WIDOWED"
     )
-    profession: Optional[str] = Field(None, max_length=500, description="Customer's profession")
     economic_activity: Optional[str] = Field(None, max_length=500, description="Customer's economic activity")
 
 
@@ -64,7 +63,6 @@ class CustomerUpdate(BaseModel):
     birth_place: Optional[str] = Field(None, max_length=100)
     nationality: Optional[str] = Field(None, max_length=50)
     civil_status: Optional[str] = Field(None, max_length=30)
-    profession: Optional[str] = Field(None, max_length=500)
     economic_activity: Optional[str] = Field(None, max_length=500)
 
 

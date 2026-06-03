@@ -22,7 +22,8 @@ def fetch_collecta_page(url: str, headers: dict, page: int) -> tuple[list[dict],
     resp = requests.get(url, headers=headers,
                         params={"page": page, "per_page": _PER_PAGE}, timeout=30)
     resp.raise_for_status()
-    pagination = resp.json().get("data", {})
+    # Collecta API structure might use "result" instead of "data"
+    pagination = resp.json().get("result") or resp.json().get("data", {})
     return pagination.get("data", []), pagination.get("last_page", 1)
 
 

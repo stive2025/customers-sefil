@@ -249,8 +249,8 @@ def run_collecta_by_identification(identification: str) -> SyncRunResponse:
             )
             resp.raise_for_status()
             body = resp.json()
-            # Collecta API structure: { success, message, data: { data: [...], last_page, ... } }
-            pagination = body.get("data", {})
+            # Collecta API structure might use "result" instead of "data"
+            pagination = body.get("result") or body.get("data", {})
             raw = pagination.get("data", []) if isinstance(pagination, dict) else []
             if raw:
                 _accumulate(result, _run_upsert(prepare_fn(raw, **fn_kwargs), f"Collecta-{label}/{identification}"))
@@ -282,7 +282,7 @@ def _backfill_collecta_basics(db: Session) -> SyncRunResponse:
         try:
             resp = _req.get(url, headers=headers, params={"ci": ci, "page": 1, "per_page": 10}, timeout=10)
             if resp.status_code == 200:
-                pagination = resp.json().get("data", {})
+                pagination = resp.json().get("result") or resp.json().get("data", {})
                 return pagination.get("data", []) if isinstance(pagination, dict) else []
         except Exception:
             pass

@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.core.database import SessionLocal
 from app.schemas.sync import CustomerUpsertItem, PhoneItem, AddressItem
 from app.services.bulk_upsert import bulk_upsert_customers
-from app.services.data_cleaning import clean_phone_number, standardize_text
+from app.services.data_cleaning import clean_phone_number, standardize_text, clean_identification
 from app.services.etl_collecta import infer_phone_type, _ADDRESS_TYPE_MAP
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -35,10 +35,9 @@ def main():
                 data_rows = item.get("data", [])
                 logger.info("Encontrados %d teléfonos en el JSON", len(data_rows))
                 for row in data_rows:
-                    ci = row.get("client_identification")
+                    ci = clean_identification(row.get("client_identification"))
                     if not ci:
                         continue
-                    ci = ci.strip()
                     
                     local_number = clean_phone_number(row.get("phone_number"))
                     if not local_number:
@@ -71,10 +70,9 @@ def main():
                 data_rows = item.get("data", [])
                 logger.info("Encontradas %d direcciones en el JSON", len(data_rows))
                 for row in data_rows:
-                    ci = row.get("client_identification")
+                    ci = clean_identification(row.get("client_identification"))
                     if not ci:
                         continue
-                    ci = ci.strip()
                     
                     # Construir address_line igual que en el ETL
                     parts = [

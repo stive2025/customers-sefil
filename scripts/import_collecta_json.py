@@ -21,7 +21,8 @@ def main():
     contacts_path = root_dir / "collection_contacts.json"
     directions_path = root_dir / "collection_directions.json"
 
-    customers_map = defaultdict(lambda: CustomerUpsertItem(identification="", phones=[], addresses=[]))
+    from typing import Dict
+    customers_map: Dict[str, CustomerUpsertItem] = {}
 
     # --- 1. Load Phones ---
     if contacts_path.exists():
@@ -52,7 +53,8 @@ def main():
                         created_source="Collecta JSON"
                     )
                     
-                    customers_map[ci].identification = ci
+                    if ci not in customers_map:
+                        customers_map[ci] = CustomerUpsertItem(identification=ci, phones=[], addresses=[])
                     customers_map[ci].phones.append(phone_item)
                 break
     else:
@@ -112,7 +114,8 @@ def main():
                         source="Collecta JSON"
                     )
                     
-                    customers_map[ci].identification = ci
+                    if ci not in customers_map:
+                        customers_map[ci] = CustomerUpsertItem(identification=ci, phones=[], addresses=[])
                     customers_map[ci].addresses.append(addr_item)
                 break
     else:

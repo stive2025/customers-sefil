@@ -352,3 +352,15 @@ def debug_collecta(identification: str):
     except Exception as exc:
         return {"error": str(exc)}
 
+@router.get("/debug/datasefil/{identification}", tags=["Sync"])
+def debug_datasefil(identification: str):
+    import requests as _req
+    url = os.getenv("DATASEFIL_API_URL", "https://api.sefil.com.ec/api/client/identification")
+    token = os.getenv("DATASEFIL_TOKEN", "")
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    try:
+        resp = _req.get(f"{url}/{identification}", headers=headers)
+        return resp.json()
+    except Exception as exc:
+        return {"error": str(exc)}
+

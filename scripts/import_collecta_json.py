@@ -7,7 +7,7 @@ from collections import defaultdict
 # Agrega la raíz del proyecto al sys.path para poder importar 'app'
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.db.session import SessionLocal
+from app.core.database import SessionLocal
 from app.schemas.sync import CustomerUpsertItem, PhoneItem, AddressItem
 from app.services.bulk_upsert import bulk_upsert_customers
 from app.services.data_cleaning import clean_phone_number, standardize_text

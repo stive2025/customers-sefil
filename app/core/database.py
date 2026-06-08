@@ -28,6 +28,9 @@ engine = create_engine(
     DATABASE_URL,
     echo=False,           # Cambiar a True para ver el SQL en consola (debugging)
     pool_pre_ping=True,   # Verifica la conexión antes de usarla (evita errores de conexión caída)
+    pool_size=30,         # Aumentado para soportar mayor concurrencia de requests/background tasks
+    max_overflow=20,      # Permitir hasta 50 conexiones totales (cubre el límite de threads de FastAPI)
+    pool_timeout=60,      # Tiempo de espera máximo de 60s
 )
 
 # ---------------------------------------------------------------------------

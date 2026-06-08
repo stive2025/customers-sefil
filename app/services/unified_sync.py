@@ -28,6 +28,7 @@ from app.services.data_cleaning import (
     clean_identification,
     clean_phone_number,
     clean_salary,
+    infer_phone_type,
     standardize_text,
 )
 
@@ -104,7 +105,7 @@ def _sync_phones(customer: Customer, phones_raw: list[dict], source: str, db: Se
             customer_id=customer.id,
             country_code="+593",
             phone_number=local_number,
-            phone_type=phone_data.get("phone_type"),
+            phone_type=phone_data.get("phone_type") or infer_phone_type(local_number),
             created_source=source,
         ))
         existing.add(local_number)

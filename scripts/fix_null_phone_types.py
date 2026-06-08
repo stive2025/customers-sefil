@@ -1,5 +1,5 @@
 import logging
-from app.db.session import SessionLocal
+from app.core.database import SessionLocal
 from app.models.collections import CollectionPhone
 from app.services.data_cleaning import infer_phone_type
 import time

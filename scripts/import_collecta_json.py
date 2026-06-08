@@ -127,8 +127,6 @@ def main():
 
     logger.info("Preparados %d clientes para Upsert (inyección de contactos y direcciones)", len(upsert_items))
     
-    # Procesar en lotes
-    db = SessionLocal()
     batch_size = 1000
     try:
         total_created = 0
@@ -139,21 +137,24 @@ def main():
             batch = upsert_items[i : i + batch_size]
             logger.info("Procesando lote %d a %d...", i, i + len(batch))
             
-            result = bulk_upsert_customers(batch, db)
-            
-            total_created += result.created
-            total_updated += result.updated
-            total_skipped += result.skipped
-            
-            for err in result.errors:
-                logger.error("Error en lote: %s", err)
+            # Usar una sesión fresca por cada lote asegura que si la conexión se corta,
+            # el siguiente lote intentará reconectarse y no fallará en cadena.
+            with SessionLocal() as db:
+                result = bulk_upsert_customers(batch, db)
+                
+                total_created += result.created
+                total_updated += result.updated
+                total_skipped += result.skipped
+                
+                for err in result.errors:
+                    logger.error("Error en lote: %s", err)
                 
         logger.info("FINALIZADO:")
         logger.info("Creados: %d", total_created)
         logger.info("Actualizados: %d", total_updated)
         logger.info("Omitidos (sin cambios o no encontrados): %d", total_skipped)
-    finally:
-        db.close()
+    except Exception as exc:
+        logger.error("Error crítico durante el procesamiento: %s", exc)
 
 if __name__ == "__main__":
     main()

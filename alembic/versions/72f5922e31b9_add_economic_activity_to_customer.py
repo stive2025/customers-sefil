@@ -78,7 +78,10 @@ def upgrade() -> None:
                existing_type=sa.VARCHAR(length=50),
                server_default=None,
                existing_nullable=True)
-    op.create_index(op.f('ix_customer_relationships_id'), 'customer_relationships', ['id'], unique=False)
+    op.execute(sa.text(
+        "CREATE INDEX IF NOT EXISTS ix_customer_relationships_id "
+        "ON customer_relationships (id)"
+    ))
     # ### end Alembic commands ###
 
 

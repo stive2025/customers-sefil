@@ -345,7 +345,7 @@ def add_customer_phone(
     if db.execute(select(CollectionPhone).where(
         CollectionPhone.customer_id == cliente.id,
         CollectionPhone.phone_number == payload.phone_number,
-    )).scalar_one_or_none():
+    )).scalars().first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail=f"El número '{payload.phone_number}' ya está registrado.")
     phone = CollectionPhone(
@@ -426,7 +426,7 @@ def add_customer_email(
     if db.execute(select(CollectionEmail).where(
         CollectionEmail.customer_id == cliente.id,
         CollectionEmail.email_address == payload.email_address,
-    )).scalar_one_or_none():
+    )).scalars().first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail=f"El correo '{payload.email_address}' ya está registrado.")
     email = CollectionEmail(
@@ -593,7 +593,7 @@ def add_customer_relationship(
             CustomerRelationship.customer_id == cliente.id,
             CustomerRelationship.relationship_type == payload.relationship_type,
             CustomerRelationship.related_identification == payload.related_identification,
-        )).scalar_one_or_none()
+        )).scalars().first()
         if existente:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

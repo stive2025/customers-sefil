@@ -19,6 +19,7 @@ services:
     image: postgres:15-alpine
     container_name: centralizacion_db
     restart: unless-stopped
+    command: ["postgres", "-c", "max_connections=200"]
     environment:
       POSTGRES_USER:     ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-S3F1L_Dev}

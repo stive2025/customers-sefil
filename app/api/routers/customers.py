@@ -515,7 +515,7 @@ def add_customer_address(
         address_type=payload.address_type,
         latitude=payload.latitude,
         longitude=payload.longitude,
-        source=payload.source,
+
         created_by=payload.created_by,
         created_source=payload.created_source,
     )

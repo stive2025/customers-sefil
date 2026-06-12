@@ -76,7 +76,7 @@ class CollectionAddressBase(BaseModel):
     address_type: Optional[str] = Field(None, max_length=30)
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    source: str = Field(default="Manual", max_length=50)
+
 
     @field_validator("address_type", mode="before")
     @classmethod
@@ -147,7 +147,7 @@ class CollectionAddressResponse(CollectionAddressBase):
 class CollectionEmailBase(BaseModel):
     email_address: EmailStr = Field(...)
     is_active: bool = Field(default=True)
-    source: str = Field(default="Manual", max_length=50)
+
 
 
 class CollectionEmailCreate(CollectionEmailBase):

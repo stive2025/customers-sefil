@@ -27,7 +27,7 @@ class AddressItem(BaseModel):
     address_type: Optional[str] = Field(None, max_length=30)
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    source: str = Field(..., max_length=50)
+    created_source: Optional[str] = Field(None, max_length=50)
 
     @field_validator("address_type", mode="before")
     @classmethod
@@ -45,7 +45,7 @@ class AddressItem(BaseModel):
 class EmailItem(BaseModel):
     email_address: str = Field(..., max_length=150)
     is_active: bool = True
-    source: str = Field(..., max_length=50)
+    created_source: Optional[str] = Field(None, max_length=50)
 
 
 class RelationshipItem(BaseModel):
@@ -56,7 +56,7 @@ class RelationshipItem(BaseModel):
     related_gender: Optional[str] = Field(None, max_length=20)
     related_civil_status: Optional[str] = Field(None, max_length=30)
     related_death_date: Optional[date] = None
-    source: str = Field(default="DATA SEFIL", max_length=50)
+    created_source: Optional[str] = Field(None, max_length=50)
 
 
 class CustomerUpsertItem(BaseModel):

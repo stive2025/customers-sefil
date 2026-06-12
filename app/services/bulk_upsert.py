@@ -79,8 +79,7 @@ def _merge_addresses(customer: Customer, addresses: list[AddressItem], db: Sessi
             address_type=item.address_type,
             latitude=item.latitude,
             longitude=item.longitude,
-            source=item.source,
-            created_source=item.source,
+            created_source=item.created_source,
         )
         db.add(addr)
         customer.addresses.append(addr)
@@ -96,8 +95,7 @@ def _merge_emails(customer: Customer, emails: list[EmailItem], db: Session) -> N
             customer_id=customer.id,
             email_address=item.email_address,
             is_active=item.is_active,
-            source=item.source,
-            created_source=item.source,
+            created_source=item.created_source,
         )
         db.add(email)
         customer.emails.append(email)
@@ -133,7 +131,7 @@ def _merge_relationships(customer: Customer, rels: list[RelationshipItem], db: S
             related_gender=item.related_gender,
             related_civil_status=item.related_civil_status,
             related_death_date=item.related_death_date,
-            source=item.source,
+            created_source=item.created_source,
         )
         db.add(rel)
         customer.relationships.append(rel)

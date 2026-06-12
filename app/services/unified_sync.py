@@ -125,7 +125,7 @@ def _sync_addresses(customer: Customer, addresses_raw: list[dict], source: str, 
             province=standardize_text(addr_data.get("province")) or None,
             city=standardize_text(addr_data.get("city")) or None,
             address_type=addr_data.get("address_type"),
-            source=source,
+            created_source=source,
         ))
         existing.add(address_line)
 
@@ -142,7 +142,7 @@ def _sync_emails(customer: Customer, emails_raw: list[dict], source: str, db: Se
             customer_id=customer.id,
             email_address=email_address,
             is_active=bool(email_data.get("is_active", True)),
-            source=source,
+            created_source=source,
         ))
         existing.add(email_address)
 
@@ -184,7 +184,7 @@ def _sync_relationships(customer: Customer, parents_raw: list[dict], source: str
             related_gender=clean_gender(parent.get("gender") or parent.get("related_gender")),
             related_civil_status=clean_civil_status(parent.get("state_civil") or parent.get("related_civil_status")),
             related_death_date=clean_date(parent.get("death") or parent.get("related_death_date")),
-            source=source,
+            created_source=source,
         ))
         existing.add(key)
 

@@ -183,7 +183,7 @@ def _build_directions_for_ci(ci: str, rows: list[dict]) -> list[CustomerUpsertIt
             address_type=address_type,
             latitude=lat,
             longitude=lng,
-            source="Collecta",
+            created_source="Collecta",
         ))
     if not addresses:
         return []

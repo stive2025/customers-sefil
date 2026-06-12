@@ -234,7 +234,7 @@ def prepare_leads_customers() -> list[CustomerUpsertItem]:
                 emails.append(EmailItem(
                     email_address=email_address,
                     is_active=True,
-                    source="Leads",
+                    created_source="Leads",
                 ))
                 seen_emails.add(email_address)
 
@@ -245,7 +245,7 @@ def prepare_leads_customers() -> list[CustomerUpsertItem]:
                 city=a["city"],
                 province=a["province"],
                 address_type=a["address_type"],
-                source="Leads",
+                created_source="Leads",
             )
             for a in data["addresses"]
         ]

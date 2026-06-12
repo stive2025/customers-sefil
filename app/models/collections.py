@@ -65,7 +65,7 @@ class CollectionAddress(Base):
     address_type: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="Manual")
+
     # ── Auditoría ──────────────────────────────────────────────────────────────
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -95,7 +95,7 @@ class CollectionEmail(Base):
     )
     email_address: Mapped[str] = mapped_column(String(150), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="Manual")
+
     # ── Auditoría ──────────────────────────────────────────────────────────────
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     created_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)

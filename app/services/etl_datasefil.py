@@ -133,6 +133,16 @@ def _extract_phones(contacts_raw: list[dict]) -> list[PhoneItem]:
     return result
 
 
+def _clean_geo_field(value: str | None) -> str | None:
+    """Returns None if the value is empty, 'SIN DATOS', 'SIN DATO', 'N/A', etc."""
+    if not value:
+        return None
+    cleaned = standardize_text(value)
+    if not cleaned or cleaned in ("SIN DATOS", "SIN DATO", "N/A", "NO TIENE", "NO APLICA", "NINGUNO", "NINGUNA", ".", "-"):
+        return None
+    return cleaned
+
+
 def _extract_addresses(addresses_raw: list[dict]) -> list[AddressItem]:
     result: list[AddressItem] = []
     seen: set[str] = set()
@@ -146,16 +156,16 @@ def _extract_addresses(addresses_raw: list[dict]) -> list[AddressItem]:
         if "DOMICILIO" in raw_type:
             address_type = "HOME"
         elif "TRABAJO" in raw_type:
-            address_type = "WORK"
+            address_type = "JOB"
         else:
-            address_type = raw_type or None
+            address_type = None
 
         result.append(AddressItem(
             address_line=address_line[:499],
-            province=standardize_text(addr_data.get("province")) or None,
-            city=standardize_text(addr_data.get("city")) or None,
+            province=_clean_geo_field(addr_data.get("province")),
+            city=_clean_geo_field(addr_data.get("city")),
             address_type=address_type,
-            source="DATA SEFIL",
+            created_source="DATA SEFIL",
         ))
         seen.add(address_line)
 
@@ -174,7 +184,7 @@ def _extract_emails(emails_raw: list[dict]) -> list[EmailItem]:
         result.append(EmailItem(
             email_address=email_address,
             is_active=bool(email_data.get("active", True)),
-            source="DATA SEFIL",
+            created_source="DATA SEFIL",
         ))
         seen.add(email_address)
 
@@ -206,7 +216,7 @@ def _extract_relationships(parents_raw: list[dict]) -> list[RelationshipItem]:
             related_gender=clean_gender(parent.get("gender")),
             related_civil_status=clean_civil_status(parent.get("state_civil")),
             related_death_date=clean_date(parent.get("death")) if parent.get("death") else None,
-            source="DATA SEFIL",
+            created_source="DATA SEFIL",
         ))
 
     return result

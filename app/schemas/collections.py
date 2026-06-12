@@ -8,7 +8,7 @@ Pydantic V2 schemas for contact collection models:
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -78,6 +78,18 @@ class CollectionAddressBase(BaseModel):
     longitude: Optional[float] = None
     source: str = Field(default="Manual", max_length=50)
 
+    @field_validator("address_type", mode="before")
+    @classmethod
+    def normalize_address_type(cls, v: str | None) -> str | None:
+        if not v:
+            return None
+        val = v.upper().strip()
+        if val in ("TRABAJO", "WORK", "JOB", "OFICINA", "EMPRESA"):
+            return "JOB"
+        if val in ("DOMICILIO", "HOME", "CASA", "RESIDENCIA"):
+            return "HOME"
+        return "HOME"
+
 
 class CollectionAddressCreate(CollectionAddressBase):
     created_by: Optional[str] = Field(None, max_length=100)
@@ -96,6 +108,19 @@ class CollectionAddressUpdate(BaseModel):
     longitude: Optional[float] = None
     updated_by: Optional[str] = Field(None, max_length=100)
     updated_source: Optional[str] = Field(None, max_length=50)
+
+    @field_validator("address_type", mode="before")
+    @classmethod
+    def normalize_address_type(cls, v: str | None) -> str | None:
+        if not v:
+            return None
+        val = v.upper().strip()
+        if val in ("TRABAJO", "WORK", "JOB", "OFICINA", "EMPRESA"):
+            return "JOB"
+        if val in ("DOMICILIO", "HOME", "CASA", "RESIDENCIA"):
+            return "HOME"
+        return "HOME"
+
 
 
 class CollectionAddressResponse(CollectionAddressBase):

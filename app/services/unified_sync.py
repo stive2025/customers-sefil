@@ -111,6 +111,16 @@ def _sync_phones(customer: Customer, phones_raw: list[dict], source: str, db: Se
         existing.add(local_number)
 
 
+def _clean_geo_field(value: str | None) -> str | None:
+    """Returns None if the value is empty or a placeholder like 'SIN DATOS'."""
+    if not value:
+        return None
+    cleaned = standardize_text(value)
+    if not cleaned or cleaned in ("SIN DATOS", "SIN DATO", "N/A", "NO TIENE", "NO APLICA", "NINGUNO", "NINGUNA", ".", "-"):
+        return None
+    return cleaned
+
+
 def _sync_addresses(customer: Customer, addresses_raw: list[dict], source: str, db: Session) -> None:
     existing: set[str] = {a.address_line for a in customer.addresses}
     for addr_data in addresses_raw:
@@ -122,8 +132,8 @@ def _sync_addresses(customer: Customer, addresses_raw: list[dict], source: str, 
         db.add(CollectionAddress(
             customer_id=customer.id,
             address_line=address_line,
-            province=standardize_text(addr_data.get("province")) or None,
-            city=standardize_text(addr_data.get("city")) or None,
+            province=_clean_geo_field(addr_data.get("province")),
+            city=_clean_geo_field(addr_data.get("city")),
             address_type=addr_data.get("address_type"),
             created_source=source,
         ))
@@ -259,7 +269,7 @@ def sync_external_customer(db: Session, payload: dict, source: str) -> Customer:
 
     # "phones" (Collecta) y "contacts" (DATA SEFIL) apuntan al mismo concepto
     phones_raw    = payload.get("phones") or payload.get("contacts") or []
-    addresses_raw = payload.get("addresses") or []
+    addresses_raw = payload.get("addresses") or payload.get("address") or []
     emails_raw    = payload.get("emails")   or []
     parents_raw   = payload.get("parents")  or payload.get("relationships") or []
 

@@ -29,6 +29,24 @@ class CollectionPhoneBase(BaseModel):
     country_code: Optional[str] = Field(default="+593", max_length=5)
     phone_type: Optional[str] = Field(None, max_length=20)
 
+    @field_validator("phone_type", mode="before")
+    @classmethod
+    def normalize_phone_type(cls, v: str | None) -> str | None:
+        if not v:
+            return None
+        import unicodedata
+        val = ''.join(c for c in unicodedata.normalize('NFD', v) if unicodedata.category(c) != 'Mn')
+        val = val.upper().strip()
+        if val in ("MOVIL", "MOBILE", "CELULAR", "CEL", "MOBI", "CELU"):
+            return "MOVIL"
+        if val in ("FIJO", "CONVENCIONAL", "CASA", "TRABAJO", "DOMICILIO", "WORK", "HOME", "CONV", "OFICINA"):
+            return "FIJO"
+        if "MOVIL" in val or "MOBILE" in val or "CEL" in val:
+            return "MOVIL"
+        if "FIJO" in val or "CONV" in val or "CASA" in val:
+            return "FIJO"
+        return None
+
 
 class CollectionPhoneCreate(CollectionPhoneBase):
     created_by: Optional[str] = Field(None, max_length=100)
@@ -41,6 +59,24 @@ class CollectionPhoneUpdate(BaseModel):
     country_code: Optional[str] = Field(None, max_length=5)
     updated_by: Optional[str] = Field(None, max_length=100)
     updated_source: Optional[str] = Field(None, max_length=50)
+
+    @field_validator("phone_type", mode="before")
+    @classmethod
+    def normalize_phone_type(cls, v: str | None) -> str | None:
+        if not v:
+            return None
+        import unicodedata
+        val = ''.join(c for c in unicodedata.normalize('NFD', v) if unicodedata.category(c) != 'Mn')
+        val = val.upper().strip()
+        if val in ("MOVIL", "MOBILE", "CELULAR", "CEL", "MOBI", "CELU"):
+            return "MOVIL"
+        if val in ("FIJO", "CONVENCIONAL", "CASA", "TRABAJO", "DOMICILIO", "WORK", "HOME", "CONV", "OFICINA"):
+            return "FIJO"
+        if "MOVIL" in val or "MOBILE" in val or "CEL" in val:
+            return "MOVIL"
+        if "FIJO" in val or "CONV" in val or "CASA" in val:
+            return "FIJO"
+        return None
 
 
 class CollectionPhoneResponse(CollectionPhoneBase):

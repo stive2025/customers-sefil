@@ -16,6 +16,24 @@ class PhoneItem(BaseModel):
     calls_not_effective: Optional[int] = None
     created_source: Optional[str] = Field(None, max_length=50)
 
+    @field_validator("phone_type", mode="before")
+    @classmethod
+    def normalize_phone_type(cls, v: str | None) -> str | None:
+        if not v:
+            return None
+        import unicodedata
+        val = ''.join(c for c in unicodedata.normalize('NFD', v) if unicodedata.category(c) != 'Mn')
+        val = val.upper().strip()
+        if val in ("MOVIL", "MOBILE", "CELULAR", "CEL", "MOBI", "CELU"):
+            return "MOVIL"
+        if val in ("FIJO", "CONVENCIONAL", "CASA", "TRABAJO", "DOMICILIO", "WORK", "HOME", "CONV", "OFICINA"):
+            return "FIJO"
+        if "MOVIL" in val or "MOBILE" in val or "CEL" in val:
+            return "MOVIL"
+        if "FIJO" in val or "CONV" in val or "CASA" in val:
+            return "FIJO"
+        return None
+
 
 class AddressItem(BaseModel):
     address_line: str = Field(..., max_length=500)

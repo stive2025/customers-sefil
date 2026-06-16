@@ -121,10 +121,10 @@ class CollectionAddressBase(BaseModel):
             return None
         val = v.upper().strip()
         if val in ("TRABAJO", "WORK", "JOB", "OFICINA", "EMPRESA"):
-            return "JOB"
-        if val in ("DOMICILIO", "HOME", "CASA", "RESIDENCIA"):
-            return "HOME"
-        return "HOME"
+            return "Trabajo"
+        if val in ("DOMICILIO", "HOME", "CASA", "RESIDENCIA", "HOGAR"):
+            return "Hogar"
+        return "Hogar"
 
 
 class CollectionAddressCreate(CollectionAddressBase):
@@ -152,10 +152,10 @@ class CollectionAddressUpdate(BaseModel):
             return None
         val = v.upper().strip()
         if val in ("TRABAJO", "WORK", "JOB", "OFICINA", "EMPRESA"):
-            return "JOB"
-        if val in ("DOMICILIO", "HOME", "CASA", "RESIDENCIA"):
-            return "HOME"
-        return "HOME"
+            return "Trabajo"
+        if val in ("DOMICILIO", "HOME", "CASA", "RESIDENCIA", "HOGAR"):
+            return "Hogar"
+        return "Hogar"
 
 
 

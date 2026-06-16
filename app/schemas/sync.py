@@ -76,6 +76,7 @@ class AddressItem(BaseModel):
 
 class EmailItem(BaseModel):
     email_address: str = Field(..., max_length=150)
+    is_active: bool = True
     created_source: Optional[str] = Field(None, max_length=50)
 
     @field_validator("created_source", mode="before")
@@ -93,6 +94,7 @@ class RelationshipItem(BaseModel):
     related_birth_date: Optional[date] = None
     related_gender: Optional[str] = Field(None, max_length=20)
     related_civil_status: Optional[str] = Field(None, max_length=30)
+    related_death_date: Optional[date] = None
     created_source: Optional[str] = Field(None, max_length=50)
 
     @field_validator("created_source", mode="before")

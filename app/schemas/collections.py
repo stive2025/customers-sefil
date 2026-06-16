@@ -28,6 +28,7 @@ class CollectionPhoneBase(BaseModel):
     phone_number: str = Field(..., max_length=20, examples=["0991234567"])
     country_code: Optional[str] = Field(default="+593", max_length=5)
     phone_type: Optional[str] = Field(None, max_length=20)
+    alias: Optional[str] = Field(None, max_length=50)
 
     @field_validator("phone_type", mode="before")
     @classmethod
@@ -56,6 +57,7 @@ class CollectionPhoneCreate(CollectionPhoneBase):
 class CollectionPhoneUpdate(BaseModel):
     phone_number: Optional[str] = Field(None, max_length=20)
     phone_type: Optional[str] = Field(None, max_length=20)
+    alias: Optional[str] = Field(None, max_length=50)
     country_code: Optional[str] = Field(None, max_length=5)
     updated_by: Optional[str] = Field(None, max_length=100)
     updated_source: Optional[str] = Field(None, max_length=50)

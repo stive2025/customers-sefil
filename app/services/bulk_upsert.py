@@ -45,6 +45,8 @@ def _merge_phones(customer: Customer, phones: list[PhoneItem], db: Session) -> N
                 phone.calls_effective = item.calls_effective
             if item.calls_not_effective is not None:
                 phone.calls_not_effective = item.calls_not_effective
+            if item.alias is not None:
+                phone.alias = item.alias
         else:
             phone = CollectionPhone(
                 customer_id=customer.id,
@@ -54,6 +56,7 @@ def _merge_phones(customer: Customer, phones: list[PhoneItem], db: Session) -> N
                 created_source=item.created_source,
                 calls_effective=item.calls_effective,
                 calls_not_effective=item.calls_not_effective,
+                alias=item.alias,
             )
             db.add(phone)
             customer.phones.append(phone)

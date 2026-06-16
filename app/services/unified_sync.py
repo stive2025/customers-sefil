@@ -106,6 +106,7 @@ def _sync_phones(customer: Customer, phones_raw: list[dict], source: str, db: Se
             country_code="+593",
             phone_number=local_number,
             phone_type=phone_data.get("phone_type") or infer_phone_type(local_number),
+            alias=phone_data.get("alias"),
             created_source=source,
         ))
         existing.add(local_number)

@@ -16,6 +16,13 @@ class PhoneItem(BaseModel):
     calls_not_effective: Optional[int] = None
     created_source: Optional[str] = Field(None, max_length=50)
 
+    @field_validator("created_source", mode="before")
+    @classmethod
+    def normalize_source(cls, v: str | None) -> str | None:
+        if v and v.strip().lower() == "collapi":
+            return "Collecta"
+        return v
+
     @field_validator("phone_type", mode="before")
     @classmethod
     def normalize_phone_type(cls, v: str | None) -> str | None:
@@ -47,6 +54,13 @@ class AddressItem(BaseModel):
     longitude: Optional[float] = None
     created_source: Optional[str] = Field(None, max_length=50)
 
+    @field_validator("created_source", mode="before")
+    @classmethod
+    def normalize_source(cls, v: str | None) -> str | None:
+        if v and v.strip().lower() == "collapi":
+            return "Collecta"
+        return v
+
     @field_validator("address_type", mode="before")
     @classmethod
     def normalize_address_type(cls, v: str | None) -> str | None:
@@ -62,8 +76,14 @@ class AddressItem(BaseModel):
 
 class EmailItem(BaseModel):
     email_address: str = Field(..., max_length=150)
-    is_active: bool = True
     created_source: Optional[str] = Field(None, max_length=50)
+
+    @field_validator("created_source", mode="before")
+    @classmethod
+    def normalize_source(cls, v: str | None) -> str | None:
+        if v and v.strip().lower() == "collapi":
+            return "Collecta"
+        return v
 
 
 class RelationshipItem(BaseModel):
@@ -73,8 +93,14 @@ class RelationshipItem(BaseModel):
     related_birth_date: Optional[date] = None
     related_gender: Optional[str] = Field(None, max_length=20)
     related_civil_status: Optional[str] = Field(None, max_length=30)
-    related_death_date: Optional[date] = None
     created_source: Optional[str] = Field(None, max_length=50)
+
+    @field_validator("created_source", mode="before")
+    @classmethod
+    def normalize_source(cls, v: str | None) -> str | None:
+        if v and v.strip().lower() == "collapi":
+            return "Collecta"
+        return v
 
 
 class CustomerUpsertItem(BaseModel):

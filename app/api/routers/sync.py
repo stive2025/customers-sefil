@@ -52,6 +52,13 @@ class SyncPayload(BaseModel):
     source: str = Field(..., min_length=1, max_length=50, examples=["Collecta"])
     data: dict = Field(..., description="Payload crudo del sistema origen.")
 
+    @field_validator("source", mode="before")
+    @classmethod
+    def normalize_source(cls, v: str | None) -> str | None:
+        if v and v.strip().lower() == "collapi":
+            return "Collecta"
+        return v
+
 
 @router.post(
     "/customer",

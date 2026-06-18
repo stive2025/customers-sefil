@@ -189,11 +189,13 @@ def search_customers(
     stmt = select(Customer.identification).distinct()
 
     if name:
-        pattern = f"%{name}%"
-        stmt = stmt.where(or_(
-            Customer.first_name.ilike(pattern),
-            Customer.last_name.ilike(pattern),
-        ))
+        terms = name.strip().split()
+        for term in terms:
+            pattern = f"%{term}%"
+            stmt = stmt.where(or_(
+                Customer.first_name.ilike(pattern),
+                Customer.last_name.ilike(pattern),
+            ))
 
     if any([province, canton, parish, neighborhood, address_type]):
         stmt = stmt.join(CollectionAddress, CollectionAddress.customer_id == Customer.id)

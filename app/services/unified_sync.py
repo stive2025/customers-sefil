@@ -195,7 +195,7 @@ def _sync_relationships(customer: Customer, parents_raw: list[dict], source: str
             related_gender=clean_gender(parent.get("gender") or parent.get("related_gender")),
             related_civil_status=clean_civil_status(parent.get("state_civil") or parent.get("related_civil_status")),
             related_death_date=clean_date(parent.get("death") or parent.get("related_death_date")),
-            created_source=source,
+            source=source,
         ))
         existing.add(key)
 

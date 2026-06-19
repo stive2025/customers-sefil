@@ -12,6 +12,7 @@ class PhoneItem(BaseModel):
     phone_number: str = Field(..., max_length=20)
     phone_type: Optional[str] = Field(None, max_length=20)
     alias: Optional[str] = Field(None, max_length=50)
+    note: Optional[str] = Field(None, max_length=500)
     country_code: str = Field(default="+593", max_length=5)
     calls_effective: Optional[int] = None
     calls_not_effective: Optional[int] = None

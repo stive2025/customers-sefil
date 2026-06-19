@@ -181,6 +181,9 @@ def _extract_emails(emails_raw: list[dict]) -> list[EmailItem]:
         if not email_address or email_address in seen:
             continue
 
+        if email_address.lower().startswith("vacunacion"):
+            continue
+
         result.append(EmailItem(
             email_address=email_address,
             is_active=bool(email_data.get("active", True)),

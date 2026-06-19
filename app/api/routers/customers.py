@@ -375,6 +375,10 @@ def update_customer_phone(
     phone = _get_phone_or_404(identification, phone_id, db)
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(phone, k, v)
+        if k == "is_active" and v is True:
+            phone.deleted_at = None
+            phone.deleted_by = None
+            phone.deleted_source = None
     phone.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(phone)
@@ -456,6 +460,10 @@ def update_customer_email(
     email = _get_email_or_404(identification, email_id, db)
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(email, k, v)
+        if k == "is_active" and v is True:
+            email.deleted_at = None
+            email.deleted_by = None
+            email.deleted_source = None
     email.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(email)
@@ -538,6 +546,10 @@ def update_customer_address(
     addr = _get_address_or_404(identification, address_id, db)
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(addr, k, v)
+        if k == "is_active" and v is True:
+            addr.deleted_at = None
+            addr.deleted_by = None
+            addr.deleted_source = None
     addr.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(addr)

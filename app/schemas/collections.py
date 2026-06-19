@@ -61,6 +61,7 @@ class CollectionPhoneUpdate(BaseModel):
     alias: Optional[str] = Field(None, max_length=50)
     note: Optional[str] = Field(None, max_length=500)
     country_code: Optional[str] = Field(None, max_length=5)
+    is_active: Optional[bool] = None
     updated_by: Optional[str] = Field(None, max_length=100)
     updated_source: Optional[str] = Field(None, max_length=50)
 
@@ -146,6 +147,7 @@ class CollectionAddressUpdate(BaseModel):
     address_type: Optional[str] = Field(None, max_length=30)
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    is_active: Optional[bool] = None
     updated_by: Optional[str] = Field(None, max_length=100)
     updated_source: Optional[str] = Field(None, max_length=50)
 

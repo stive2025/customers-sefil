@@ -10,7 +10,7 @@ All models share a Many-to-One relationship with Customer.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, SmallInteger, String, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, SmallInteger, String, func, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -90,6 +90,9 @@ class CollectionAddress(Base):
 
 class CollectionEmail(Base):
     __tablename__ = "collection_emails"
+    __table_args__ = (
+        UniqueConstraint("customer_id", "email_address", name="uq_collection_emails_customer_email"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     customer_id: Mapped[int] = mapped_column(

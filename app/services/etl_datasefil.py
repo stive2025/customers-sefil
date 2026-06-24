@@ -182,7 +182,7 @@ def _extract_emails(emails_raw: list[dict]) -> list[EmailItem]:
             continue
 
         lower_email = email_address.lower()
-        if "vacunacion" in lower_email or lower_email.startswith("soporte.covid") or lower_email.startswith("notiene"):
+        if "vacuna" in lower_email or lower_email.endswith(".gob.ec") or lower_email.startswith("soporte.covid") or lower_email.startswith("notiene"):
             continue
 
         result.append(EmailItem(

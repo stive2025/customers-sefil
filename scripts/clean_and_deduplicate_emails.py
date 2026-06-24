@@ -14,9 +14,9 @@ def main():
         if args.dry_run:
             # Contar basura
             res_junk = db.execute(text(
-                "SELECT COUNT(*) FROM collection_emails WHERE email_address ILIKE '%vacuna%' OR email_address ILIKE '%.gob.ec' OR email_address ILIKE 'soporte.covid%' OR email_address ILIKE 'notiene%'"
+                "SELECT COUNT(*) FROM collection_emails WHERE email_address ILIKE '%vacuna%' OR email_address ILIKE '%covid%' OR email_address ILIKE '%salud%' OR email_address ILIKE '%.gob.ec' OR email_address ILIKE 'notiene%'"
             )).scalar()
-            print(f"[DRY-RUN] Se detectarón {res_junk} correos basura ('vacuna', '.gob.ec', 'soporte.covid' o 'notiene').")
+            print(f"[DRY-RUN] Se detectarón {res_junk} correos basura ('vacuna', 'covid', 'salud', '.gob.ec' o 'notiene').")
 
             # Contar duplicados exactos usando subquery
             res_dup = db.execute(text("""
@@ -31,7 +31,7 @@ def main():
         else:
             # 1. Eliminar basura
             res_junk = db.execute(text(
-                "DELETE FROM collection_emails WHERE email_address ILIKE '%vacuna%' OR email_address ILIKE '%.gob.ec' OR email_address ILIKE 'soporte.covid%' OR email_address ILIKE 'notiene%'"
+                "DELETE FROM collection_emails WHERE email_address ILIKE '%vacuna%' OR email_address ILIKE '%covid%' OR email_address ILIKE '%salud%' OR email_address ILIKE '%.gob.ec' OR email_address ILIKE 'notiene%'"
             ))
             print(f"Borrados {res_junk.rowcount} correos basura.")
 

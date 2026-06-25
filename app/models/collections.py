@@ -31,6 +31,7 @@ class CollectionPhone(Base):
     note: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     calls_effective: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
     calls_not_effective: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # ── Auditoría ──────────────────────────────────────────────────────────────
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)

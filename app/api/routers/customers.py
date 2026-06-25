@@ -344,17 +344,42 @@ def add_customer_phone(
     db: Session = Depends(get_db),
 ) -> CollectionPhone:
     cliente = _get_customer_or_404(identification, db)
-    if db.execute(select(CollectionPhone).where(
+    existing_phone = db.execute(select(CollectionPhone).where(
         CollectionPhone.customer_id == cliente.id,
         CollectionPhone.phone_number == payload.phone_number,
-    )).scalars().first():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-                            detail=f"El número '{payload.phone_number}' ya está registrado.")
+    )).scalars().first()
+
+    if existing_phone:
+        if existing_phone.is_verified:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail=f"El número '{payload.phone_number}' ya está registrado y visible.")
+        
+        # Upsert: El teléfono existe pero estaba oculto (ej. DataSefil). Lo verificamos y lo hacemos visible para Collecta.
+        existing_phone.is_verified = True
+        existing_phone.is_active = True
+        existing_phone.deleted_at = None
+        existing_phone.deleted_by = None
+        existing_phone.deleted_source = None
+        existing_phone.updated_source = payload.created_source
+        existing_phone.updated_by = payload.created_by
+        if payload.alias:
+            existing_phone.alias = payload.alias
+        if getattr(payload, "note", None):
+            existing_phone.note = payload.note
+        existing_phone.updated_at = datetime.now(timezone.utc)
+        
+        db.commit()
+        db.refresh(existing_phone)
+        return existing_phone
+
     phone = CollectionPhone(
         customer_id=cliente.id,
         phone_number=payload.phone_number,
         phone_type=payload.phone_type,
         country_code=payload.country_code,
+        alias=payload.alias,
+        note=getattr(payload, "note", None),
+        is_verified=True,  # Si se agrega por la API manualmente, nace verificado.
         created_by=payload.created_by,
         created_source=payload.created_source,
     )

@@ -464,7 +464,6 @@ def add_customer_email(
         customer_id=cliente.id,
         email_address=payload.email_address,
         is_active=payload.is_active,
-        source=payload.source,
         created_by=payload.created_by,
         created_source=payload.created_source,
     )

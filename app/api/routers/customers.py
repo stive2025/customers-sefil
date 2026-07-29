@@ -26,6 +26,7 @@ from app.schemas.collections import (
     CollectionPhoneCreate,
     CollectionPhoneResponse,
     CollectionPhoneUpdate,
+    CollectionPhoneVerifySource,
     SoftDeleteBody,
 )
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerResponseFull, CustomerUpdate
@@ -384,6 +385,40 @@ def add_customer_phone(
         created_source=payload.created_source,
     )
     db.add(phone)
+    db.commit()
+    db.refresh(phone)
+    return phone
+
+
+@router.patch("/{identification}/phones/verify-source", tags=["Teléfonos"], response_model=CollectionPhoneResponse,
+              summary="Verificar teléfono y reasignar su fuente (created_source)")
+def verify_phone_source(
+    identification: str,
+    payload: CollectionPhoneVerifySource,
+    db: Session = Depends(get_db),
+) -> CollectionPhone:
+    """
+    Para sistemas que solo consumen contactos con created_source='Collecta':
+    si el número ya existe pero nació con otra fuente (p.ej. 'DATA SEFIL'),
+    esto lo verifica y reasigna created_source al valor recibido en `source`.
+    """
+    cliente = _get_customer_or_404(identification, db)
+    normalized = clean_phone_number(payload.phone_number)
+    if not normalized:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail=f"El número '{payload.phone_number}' no es válido.")
+
+    phone = db.execute(select(CollectionPhone).where(
+        CollectionPhone.customer_id == cliente.id,
+        CollectionPhone.phone_number == normalized,
+    )).scalars().first()
+    if not phone:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"No se encontró el teléfono '{normalized}' para el cliente '{identification}'.")
+
+    phone.is_verified = payload.is_verified
+    phone.created_source = payload.source
+    phone.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(phone)
     return phone

@@ -115,6 +115,21 @@ Registrar el resultado de una gestión (llamada, visita, etc.) sobre este teléf
 
 > El `PATCH` **sobrescribe** el valor recibido (no lo suma al existente) — quien consuma este endpoint es responsable de enviar el contador acumulado si necesita incrementar.
 
+**Verificar y reasignar fuente** — `PATCH /customers/{identification}/phones/verify-source`
+
+Pensado para sistemas que solo leen contactos con `created_source = "Collecta"`: si intentan agregar un teléfono que ya existe pero nació con otra fuente (p.ej. `"DATA SEFIL"`), este endpoint lo busca por `phone_number` dentro de ese cliente y **sobrescribe** `is_verified` y `created_source` con los valores recibidos.
+
+```json
+// Request
+{ "phone_number": "0991234567", "is_verified": true, "source": "Collecta" }
+```
+```json
+// Response 200
+{ "...": "...", "phone_number": "0991234567", "is_verified": true, "created_source": "Collecta", "updated_at": "2026-07-29T10:00:00.000000Z" }
+```
+
+Errores: `404` si el cliente no existe o si ese `phone_number` no está registrado para ese cliente; `422` si `phone_number` no es un número válido.
+
 **Eliminar (soft-delete)** — `DELETE /customers/{identification}/phones/{phone_id}`, body opcional:
 
 ```json

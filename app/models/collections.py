@@ -31,6 +31,8 @@ class CollectionPhone(Base):
     note: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     calls_effective: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
     calls_not_effective: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    count_effective: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    count_not_effective: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # ── Auditoría ──────────────────────────────────────────────────────────────
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -68,6 +70,8 @@ class CollectionAddress(Base):
     address_type: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    count_effective: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    count_not_effective: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
 
     # ── Auditoría ──────────────────────────────────────────────────────────────
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

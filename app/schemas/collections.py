@@ -64,6 +64,8 @@ class CollectionPhoneUpdate(BaseModel):
     country_code: Optional[str] = Field(None, max_length=5)
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
+    count_effective: Optional[int] = None
+    count_not_effective: Optional[int] = None
     updated_by: Optional[str] = Field(None, max_length=100)
     updated_source: Optional[str] = Field(None, max_length=50)
 
@@ -93,6 +95,8 @@ class CollectionPhoneResponse(CollectionPhoneBase):
     customer_id: int
     calls_effective: Optional[int] = None
     calls_not_effective: Optional[int] = None
+    count_effective: Optional[int] = None
+    count_not_effective: Optional[int] = None
     is_active: bool = True
     created_by: Optional[str] = None
     created_source: Optional[str] = None
@@ -149,6 +153,8 @@ class CollectionAddressUpdate(BaseModel):
     address_type: Optional[str] = Field(None, max_length=30)
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    count_effective: Optional[int] = None
+    count_not_effective: Optional[int] = None
     is_active: Optional[bool] = None
     updated_by: Optional[str] = Field(None, max_length=100)
     updated_source: Optional[str] = Field(None, max_length=50)
@@ -172,6 +178,8 @@ class CollectionAddressResponse(CollectionAddressBase):
 
     id: int
     customer_id: int
+    count_effective: Optional[int] = None
+    count_not_effective: Optional[int] = None
     is_active: bool = True
     created_by: Optional[str] = None
     created_source: Optional[str] = None

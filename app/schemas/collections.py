@@ -72,6 +72,7 @@ class CollectionPhoneUpdate(BaseModel):
     is_verified: Optional[bool] = None
     count_effective: Optional[int] = None
     count_not_effective: Optional[int] = None
+    created_source: Optional[str] = Field(None, max_length=50)
     updated_by: Optional[str] = Field(None, max_length=100)
     updated_source: Optional[str] = Field(None, max_length=50)
 
@@ -162,6 +163,7 @@ class CollectionAddressUpdate(BaseModel):
     count_effective: Optional[int] = None
     count_not_effective: Optional[int] = None
     is_active: Optional[bool] = None
+    created_source: Optional[str] = Field(None, max_length=50)
     updated_by: Optional[str] = Field(None, max_length=100)
     updated_source: Optional[str] = Field(None, max_length=50)
 
@@ -216,6 +218,7 @@ class CollectionEmailCreate(CollectionEmailBase):
 class CollectionEmailUpdate(BaseModel):
     email_address: Optional[EmailStr] = None
     is_active: Optional[bool] = None
+    created_source: Optional[str] = Field(None, max_length=50)
     updated_by: Optional[str] = Field(None, max_length=100)
     updated_source: Optional[str] = Field(None, max_length=50)
 

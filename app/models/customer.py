@@ -50,6 +50,9 @@ class Customer(Base):
     birth_date: Mapped[Optional[date]] = mapped_column(
         Date, nullable=True
     )
+    death_date: Mapped[Optional[date]] = mapped_column(
+        Date, nullable=True, comment="Date of death, if applicable"
+    )
     birth_place: Mapped[Optional[str]] = mapped_column(
         String(200), nullable=True
     )

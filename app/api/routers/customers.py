@@ -125,6 +125,7 @@ def create_customer(payload: CustomerCreate, db: Session = Depends(get_db)) -> C
         last_name=payload.last_name,
         gender=payload.gender,
         birth_date=payload.birth_date,
+        death_date=payload.death_date,
         birth_place=payload.birth_place,
         nationality=payload.nationality,
         civil_status=payload.civil_status,

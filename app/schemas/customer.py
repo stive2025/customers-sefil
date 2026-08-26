@@ -31,6 +31,9 @@ class CustomerBase(BaseModel):
     birth_date: Optional[date] = Field(
         None, description="Date of birth in ISO format (YYYY-MM-DD)"
     )
+    death_date: Optional[date] = Field(
+        None, description="Date of death in ISO format (YYYY-MM-DD), if applicable"
+    )
     birth_place: Optional[str] = Field(None, max_length=100, description="City of birth")
     nationality: Optional[str] = Field(
         default="Ecuadorian", max_length=50, description="Customer's nationality"
@@ -60,6 +63,7 @@ class CustomerUpdate(BaseModel):
     last_name: Optional[str] = Field(None, max_length=100)
     gender: Optional[str] = Field(None, max_length=20)
     birth_date: Optional[date] = None
+    death_date: Optional[date] = None
     birth_place: Optional[str] = Field(None, max_length=100)
     nationality: Optional[str] = Field(None, max_length=50)
     civil_status: Optional[str] = Field(None, max_length=30)

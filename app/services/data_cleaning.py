@@ -412,6 +412,7 @@ async def migrate_system_data(
                 last_name=payload_validado.last_name,
                 gender=payload_validado.gender,
                 birth_date=payload_validado.birth_date,
+                death_date=payload_validado.death_date,
                 birth_place=payload_validado.birth_place,
                 nationality=payload_validado.nationality,
                 civil_status=payload_validado.civil_status,

@@ -221,7 +221,7 @@ Documentación interactiva: `https://services.sefil.com.ec/customers/docs`
 |---|---|---|
 | `POST` | `/` | Crear cliente |
 | `GET` | `/` | Listar clientes (paginado: `skip`, `limit`) |
-| `GET` | `/search?q=...` | Buscar por cédula exacta, nombre parcial o nombre completo |
+| `GET` | `/search?name=...` | Buscar por nombre parcial (y/o geografía); devuelve el detalle completo (igual que `/{id}/full`) de cada coincidencia |
 | `GET` | `/by/{identification}` | Obtener cliente por cédula o RUC |
 | `GET` | `/by-phone/{phone_number}` | Buscar cliente por número de teléfono (normalizado) |
 | `GET` | `/{id}` | Obtener cliente por ID interno |

@@ -99,10 +99,6 @@ def _get_address_or_404(identification: str, address_id: int, db: Session) -> Co
 # Response schemas locales
 # ---------------------------------------------------------------------------
 
-class IdentificationListResponse(BaseModel):
-    identifications: List[str]
-
-
 class BatchRequest(BaseModel):
     identifications: List[str] = Field(..., min_length=1, max_length=200)
 
@@ -164,12 +160,12 @@ def list_customers(
 @router.get(
     "/search",
     tags=["Información"],
-    response_model=IdentificationListResponse,
+    response_model=List[CustomerResponseFull],
     summary="Buscar clientes por nombre o geografía",
     description=(
-        "Retorna una lista de cédulas que coinciden con los filtros. "
-        "Todos los parámetros son opcionales pero se requiere al menos uno. "
-        "Búsqueda de nombre parcial sobre first_name y last_name. "
+        "Retorna el detalle completo (igual que GET /{identification}/full) de los clientes "
+        "que coinciden con los filtros. Todos los parámetros son opcionales pero se requiere "
+        "al menos uno. Búsqueda de nombre parcial sobre first_name y last_name. "
         "Búsqueda geográfica sobre las direcciones registradas. Máximo 500 resultados."
     ),
 )
@@ -181,43 +177,60 @@ def search_customers(
     neighborhood: Optional[str] = Query(None),
     address_type: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-) -> IdentificationListResponse:
+) -> List[Customer]:
     if not any([name, province, canton, parish, neighborhood, address_type]):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Se requiere al menos un parámetro de búsqueda.",
         )
 
-    stmt = select(Customer.identification).distinct()
+    id_stmt = select(Customer.id).distinct()
 
     if name:
         terms = name.strip().split()
         for term in terms:
             pattern = f"%{term}%"
-            stmt = stmt.where(or_(
+            id_stmt = id_stmt.where(or_(
                 Customer.first_name.ilike(pattern),
                 Customer.last_name.ilike(pattern),
             ))
 
     if any([province, canton, parish, neighborhood, address_type]):
-        stmt = stmt.join(CollectionAddress, CollectionAddress.customer_id == Customer.id)
+        id_stmt = id_stmt.join(CollectionAddress, CollectionAddress.customer_id == Customer.id)
         if province:
-            stmt = stmt.where(CollectionAddress.province.ilike(f"%{province}%"))
+            id_stmt = id_stmt.where(CollectionAddress.province.ilike(f"%{province}%"))
         if canton:
-            stmt = stmt.where(or_(
+            id_stmt = id_stmt.where(or_(
                 CollectionAddress.city.ilike(f"%{canton}%"),
                 CollectionAddress.canton.ilike(f"%{canton}%"),
             ))
         if parish:
-            stmt = stmt.where(CollectionAddress.parish.ilike(f"%{parish}%"))
+            id_stmt = id_stmt.where(CollectionAddress.parish.ilike(f"%{parish}%"))
         if neighborhood:
-            stmt = stmt.where(CollectionAddress.neighborhood.ilike(f"%{neighborhood}%"))
+            id_stmt = id_stmt.where(CollectionAddress.neighborhood.ilike(f"%{neighborhood}%"))
         if address_type:
-            stmt = stmt.where(CollectionAddress.address_type.ilike(f"%{address_type}%"))
+            id_stmt = id_stmt.where(CollectionAddress.address_type.ilike(f"%{address_type}%"))
 
-    stmt = stmt.limit(500)
-    rows = db.execute(stmt).scalars().all()
-    return IdentificationListResponse(identifications=list(rows))
+    id_stmt = id_stmt.limit(500)
+    matched_ids = db.execute(id_stmt).scalars().all()
+    if not matched_ids:
+        return []
+
+    # Segunda consulta: mismo eager-load que GET /{identification}/full, por ID
+    # (evita que el join de geografía duplique filas de Customer en la carga completa).
+    full_stmt = (
+        select(Customer)
+        .where(Customer.id.in_(matched_ids))
+        .options(
+            selectinload(Customer.phones),
+            selectinload(Customer.addresses),
+            selectinload(Customer.emails),
+            selectinload(Customer.financial_information),
+            selectinload(Customer.equifax_queries),
+            selectinload(Customer.relationships),
+        )
+    )
+    return list(db.execute(full_stmt).scalars().all())
 
 
 # ---------------------------------------------------------------------------

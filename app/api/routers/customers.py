@@ -273,25 +273,45 @@ def batch_customers(
 @router.get(
     "/by-phone/{phone_number}",
     tags=["Información"],
-    response_model=CustomerResponse,
-    summary="Buscar cliente por número de teléfono",
+    response_model=List[CustomerResponseFull],
+    summary="Buscar clientes por número de teléfono",
+    description=(
+        "Retorna el detalle completo de TODOS los clientes que tienen registrado este "
+        "número de teléfono (normalizado). Un mismo número puede pertenecer a más de un "
+        "cliente (teléfono compartido/familiar, o duplicado entre fuentes) — antes este "
+        "endpoint devolvía solo uno de forma arbitraria."
+    ),
 )
-def get_customer_by_phone(phone_number: str, db: Session = Depends(get_db)) -> Customer:
+def get_customer_by_phone(phone_number: str, db: Session = Depends(get_db)) -> List[Customer]:
     normalized = clean_phone_number(phone_number)
     if not normalized:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail=f"El número '{phone_number}' no es válido.")
-    stmt = (
-        select(Customer)
+
+    id_stmt = (
+        select(Customer.id)
         .join(CollectionPhone, CollectionPhone.customer_id == Customer.id)
         .where(CollectionPhone.phone_number == normalized)
-        .limit(1)
+        .distinct()
     )
-    cliente = db.execute(stmt).scalar_one_or_none()
-    if not cliente:
+    matched_ids = db.execute(id_stmt).scalars().all()
+    if not matched_ids:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"No se encontró ningún cliente con el teléfono '{normalized}'.")
-    return cliente
+
+    full_stmt = (
+        select(Customer)
+        .where(Customer.id.in_(matched_ids))
+        .options(
+            selectinload(Customer.phones),
+            selectinload(Customer.addresses),
+            selectinload(Customer.emails),
+            selectinload(Customer.financial_information),
+            selectinload(Customer.equifax_queries),
+            selectinload(Customer.relationships),
+        )
+    )
+    return list(db.execute(full_stmt).scalars().all())
 
 
 # ---------------------------------------------------------------------------

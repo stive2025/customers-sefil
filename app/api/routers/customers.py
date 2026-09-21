@@ -32,7 +32,7 @@ from app.schemas.collections import (
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerResponseFull, CustomerUpdate
 from app.schemas.relationships import CustomerRelationshipResponse
 from app.schemas.sync import RelationshipItem
-from app.services.data_cleaning import clean_phone_number
+from app.services.data_cleaning import clean_phone_number, normalize_address_key
 
 router = APIRouter(dependencies=[Depends(get_api_key)])
 
@@ -607,6 +607,14 @@ def add_customer_address(
     db: Session = Depends(get_db),
 ) -> CollectionAddress:
     cliente = _get_customer_or_404(identification, db)
+    new_key = normalize_address_key(payload.address_line, payload.city)
+    existing_rows = db.execute(
+        select(CollectionAddress.address_line, CollectionAddress.city)
+        .where(CollectionAddress.customer_id == cliente.id)
+    ).all()
+    if any(normalize_address_key(line, city) == new_key for line, city in existing_rows):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail=f"La dirección '{payload.address_line}' ya está registrada para este cliente.")
     addr = CollectionAddress(
         customer_id=cliente.id,
         address_line=payload.address_line,

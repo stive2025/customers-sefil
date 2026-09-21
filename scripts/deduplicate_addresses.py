@@ -21,25 +21,17 @@ Uso:
     python scripts/deduplicate_addresses.py             # aplica el cambio
 """
 import argparse
-import re
-import unicodedata
 from collections import defaultdict
 
 from sqlalchemy import text
 
 from app.core.database import SessionLocal
+from app.services.data_cleaning import normalize_address_key
 
 FILL_FIELDS = ("province", "canton", "parish", "neighborhood", "address_type", "latitude", "longitude")
 SUM_FIELDS = ("count_effective", "count_not_effective")
 DELETE_BATCH = 1000
 SAMPLE_SIZE = 10
-
-
-def normalize(value: str | None) -> str:
-    if not value:
-        return ""
-    stripped = "".join(c for c in unicodedata.normalize("NFD", value) if unicodedata.category(c) != "Mn")
-    return re.sub(r"\s+", " ", stripped).strip().upper()
 
 
 def keeper_rank(row) -> tuple:
@@ -67,7 +59,7 @@ def main():
 
         groups: dict[tuple, list] = defaultdict(list)
         for row in rows:
-            groups[(row["customer_id"], normalize(row["address_line"]), normalize(row["city"]))].append(row)
+            groups[(row["customer_id"], *normalize_address_key(row["address_line"], row["city"]))].append(row)
 
         duplicate_groups = {k: v for k, v in groups.items() if len(v) > 1}
         ids_to_delete: list[int] = []

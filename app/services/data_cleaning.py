@@ -70,6 +70,25 @@ def standardize_text(texto: str | None) -> str:
     return texto.upper()
 
 
+def normalize_address_key(address_line: str | None, city: str | None) -> tuple[str, str]:
+    """
+    Clave de comparación para detectar direcciones duplicadas de un mismo cliente:
+    (address_line, city) en mayúsculas, sin tildes y con espacios colapsados.
+
+    Examples:
+        >>> normalize_address_key("Av.  Amazonás N24", "quito")
+        ('AV. AMAZONAS N24', 'QUITO')
+    """
+    def _key(value: str | None) -> str:
+        stripped = "".join(
+            c for c in unicodedata.normalize("NFD", standardize_text(value))
+            if unicodedata.category(c) != "Mn"
+        )
+        return stripped
+
+    return _key(address_line), _key(city)
+
+
 def clean_phone_number(telefono: str | None) -> str:
     """
     Limpia y normaliza un número de teléfono ecuatoriano.

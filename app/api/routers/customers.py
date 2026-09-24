@@ -41,6 +41,10 @@ router = APIRouter(dependencies=[Depends(get_api_key)])
 # Helpers internos
 # ---------------------------------------------------------------------------
 
+def _is_collecta_source(value: Optional[str]) -> bool:
+    return bool(value) and value.strip().upper() == "COLLECTA"
+
+
 def _get_customer_or_404(identification: str, db: Session) -> Customer:
     cliente = db.execute(
         select(Customer).where(Customer.identification == identification)
@@ -395,6 +399,8 @@ def add_customer_phone(
         existing_phone.deleted_at = None
         existing_phone.deleted_by = None
         existing_phone.deleted_source = None
+        if payload.created_source and existing_phone.created_source != payload.created_source:
+            existing_phone.created_source = payload.created_source
         existing_phone.updated_source = payload.created_source
         existing_phone.updated_by = payload.created_by
         if payload.alias:
@@ -523,10 +529,25 @@ def add_customer_email(
     db: Session = Depends(get_db),
 ) -> CollectionEmail:
     cliente = _get_customer_or_404(identification, db)
-    if db.execute(select(CollectionEmail).where(
+    existing_email = db.execute(select(CollectionEmail).where(
         CollectionEmail.customer_id == cliente.id,
         CollectionEmail.email_address == payload.email_address,
-    )).scalars().first():
+    )).scalars().first()
+    if existing_email:
+        # Si ya existe con otra fuente (ej. DATA SEFIL) y ahora lo confirma Collecta,
+        # se reasigna created_source a Collecta en vez de rechazar el alta.
+        if _is_collecta_source(payload.created_source) and existing_email.created_source != payload.created_source:
+            existing_email.created_source = payload.created_source
+            existing_email.updated_source = payload.created_source
+            existing_email.updated_by = payload.created_by
+            existing_email.is_active = True
+            existing_email.deleted_at = None
+            existing_email.deleted_by = None
+            existing_email.deleted_source = None
+            existing_email.updated_at = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(existing_email)
+            return existing_email
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail=f"El correo '{payload.email_address}' ya está registrado.")
     email = CollectionEmail(
@@ -608,11 +629,28 @@ def add_customer_address(
 ) -> CollectionAddress:
     cliente = _get_customer_or_404(identification, db)
     new_key = normalize_address_key(payload.address_line, payload.city)
-    existing_rows = db.execute(
-        select(CollectionAddress.address_line, CollectionAddress.city)
-        .where(CollectionAddress.customer_id == cliente.id)
-    ).all()
-    if any(normalize_address_key(line, city) == new_key for line, city in existing_rows):
+    existing_addresses = db.execute(
+        select(CollectionAddress).where(CollectionAddress.customer_id == cliente.id)
+    ).scalars().all()
+    existing_addr = next(
+        (a for a in existing_addresses if normalize_address_key(a.address_line, a.city) == new_key),
+        None,
+    )
+    if existing_addr:
+        # Si ya existe con otra fuente (ej. DATA SEFIL) y ahora la confirma Collecta,
+        # se reasigna created_source a Collecta en vez de rechazar el alta.
+        if _is_collecta_source(payload.created_source) and existing_addr.created_source != payload.created_source:
+            existing_addr.created_source = payload.created_source
+            existing_addr.updated_source = payload.created_source
+            existing_addr.updated_by = payload.created_by
+            existing_addr.is_active = True
+            existing_addr.deleted_at = None
+            existing_addr.deleted_by = None
+            existing_addr.deleted_source = None
+            existing_addr.updated_at = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(existing_addr)
+            return existing_addr
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail=f"La dirección '{payload.address_line}' ya está registrada para este cliente.")
     addr = CollectionAddress(

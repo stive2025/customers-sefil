@@ -231,7 +231,12 @@ Documentación interactiva: `https://services.sefil.com.ec/customers/docs`
 | `GET` | `/{id}/addresses?skip&limit` | Direcciones paginadas |
 | `GET` | `/{id}/relationships?skip&limit` | Relaciones familiares paginadas |
 | `POST` | `/by/{identification}/phones` | Agregar teléfono a un cliente por cédula |
-| `DELETE` | `/{id}/phones/{phone_id}` | Eliminar un teléfono |
+| `PATCH` | `/{id}/phones/{phone_id}/deactivate` | Inactivar teléfono (soft delete) |
+| `DELETE` | `/{id}/phones/{phone_id}` | Eliminar teléfono (hard delete, irreversible) |
+| `PATCH` | `/{id}/emails/{email_id}/deactivate` | Inactivar correo (soft delete) |
+| `DELETE` | `/{id}/emails/{email_id}` | Eliminar correo (hard delete, irreversible) |
+| `PATCH` | `/{id}/addresses/{address_id}/deactivate` | Inactivar dirección (soft delete) |
+| `DELETE` | `/{id}/addresses/{address_id}` | Eliminar dirección (hard delete, irreversible) |
 | `PATCH` | `/{id}` | Actualización parcial de campos |
 | `DELETE` | `/{id}` | Eliminar cliente (cascade) |
 

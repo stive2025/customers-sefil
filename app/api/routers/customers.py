@@ -485,9 +485,9 @@ def update_customer_phone(
     return phone
 
 
-@router.delete("/{identification}/phones/{phone_id}", tags=["Teléfonos"], status_code=status.HTTP_200_OK,
-               response_model=CollectionPhoneResponse, summary="Inactivar teléfono (soft delete)")
-def delete_customer_phone(
+@router.patch("/{identification}/phones/{phone_id}/deactivate", tags=["Teléfonos"],
+              response_model=CollectionPhoneResponse, summary="Inactivar teléfono (soft delete)")
+def deactivate_customer_phone(
     identification: str,
     phone_id: int,
     body: SoftDeleteBody = Body(default=SoftDeleteBody()),
@@ -501,6 +501,18 @@ def delete_customer_phone(
     db.commit()
     db.refresh(phone)
     return phone
+
+
+@router.delete("/{identification}/phones/{phone_id}", tags=["Teléfonos"], status_code=status.HTTP_204_NO_CONTENT,
+               summary="Eliminar teléfono (hard delete, irreversible)")
+def delete_customer_phone(
+    identification: str,
+    phone_id: int,
+    db: Session = Depends(get_db),
+) -> None:
+    phone = _get_phone_or_404(identification, phone_id, db)
+    db.delete(phone)
+    db.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -584,9 +596,9 @@ def update_customer_email(
     return email
 
 
-@router.delete("/{identification}/emails/{email_id}", tags=["Correos"], status_code=status.HTTP_200_OK,
-               response_model=CollectionEmailResponse, summary="Inactivar correo (soft delete)")
-def delete_customer_email(
+@router.patch("/{identification}/emails/{email_id}/deactivate", tags=["Correos"],
+              response_model=CollectionEmailResponse, summary="Inactivar correo (soft delete)")
+def deactivate_customer_email(
     identification: str,
     email_id: int,
     body: SoftDeleteBody = Body(default=SoftDeleteBody()),
@@ -600,6 +612,18 @@ def delete_customer_email(
     db.commit()
     db.refresh(email)
     return email
+
+
+@router.delete("/{identification}/emails/{email_id}", tags=["Correos"], status_code=status.HTTP_204_NO_CONTENT,
+               summary="Eliminar correo (hard delete, irreversible)")
+def delete_customer_email(
+    identification: str,
+    email_id: int,
+    db: Session = Depends(get_db),
+) -> None:
+    email = _get_email_or_404(identification, email_id, db)
+    db.delete(email)
+    db.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -695,9 +719,9 @@ def update_customer_address(
     return addr
 
 
-@router.delete("/{identification}/addresses/{address_id}", tags=["Direcciones"], status_code=status.HTTP_200_OK,
-               response_model=CollectionAddressResponse, summary="Inactivar dirección (soft delete)")
-def delete_customer_address(
+@router.patch("/{identification}/addresses/{address_id}/deactivate", tags=["Direcciones"],
+              response_model=CollectionAddressResponse, summary="Inactivar dirección (soft delete)")
+def deactivate_customer_address(
     identification: str,
     address_id: int,
     body: SoftDeleteBody = Body(default=SoftDeleteBody()),
@@ -711,6 +735,18 @@ def delete_customer_address(
     db.commit()
     db.refresh(addr)
     return addr
+
+
+@router.delete("/{identification}/addresses/{address_id}", tags=["Direcciones"], status_code=status.HTTP_204_NO_CONTENT,
+               summary="Eliminar dirección (hard delete, irreversible)")
+def delete_customer_address(
+    identification: str,
+    address_id: int,
+    db: Session = Depends(get_db),
+) -> None:
+    addr = _get_address_or_404(identification, address_id, db)
+    db.delete(addr)
+    db.commit()
 
 
 # ---------------------------------------------------------------------------

@@ -32,7 +32,7 @@ from app.schemas.collections import (
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerResponseFull, CustomerUpdate
 from app.schemas.relationships import CustomerRelationshipResponse
 from app.schemas.sync import RelationshipItem
-from app.services.data_cleaning import clean_phone_number, normalize_address_key
+from app.services.data_cleaning import clean_email, clean_phone_number, normalize_address_key
 
 router = APIRouter(dependencies=[Depends(get_api_key)])
 
@@ -302,6 +302,53 @@ def get_customer_by_phone(phone_number: str, db: Session = Depends(get_db)) -> L
     if not matched_ids:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"No se encontró ningún cliente con el teléfono '{normalized}'.")
+
+    full_stmt = (
+        select(Customer)
+        .where(Customer.id.in_(matched_ids))
+        .options(
+            selectinload(Customer.phones),
+            selectinload(Customer.addresses),
+            selectinload(Customer.emails),
+            selectinload(Customer.financial_information),
+            selectinload(Customer.equifax_queries),
+            selectinload(Customer.relationships),
+        )
+    )
+    return list(db.execute(full_stmt).scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# GET /by-email/{email_address} — Buscar cliente por correo
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/by-email/{email_address}",
+    tags=["Información"],
+    response_model=List[CustomerResponseFull],
+    summary="Buscar clientes por correo electrónico",
+    description=(
+        "Retorna el detalle completo de TODOS los clientes que tienen registrado este "
+        "correo (comparación insensible a mayúsculas/minúsculas). Un mismo correo puede "
+        "pertenecer a más de un cliente (correo compartido/familiar, o duplicado entre fuentes)."
+    ),
+)
+def get_customer_by_email(email_address: str, db: Session = Depends(get_db)) -> List[Customer]:
+    normalized = clean_email(email_address)
+    if not normalized:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail=f"El correo '{email_address}' no es válido.")
+
+    id_stmt = (
+        select(Customer.id)
+        .join(CollectionEmail, CollectionEmail.customer_id == Customer.id)
+        .where(func.lower(CollectionEmail.email_address) == normalized)
+        .distinct()
+    )
+    matched_ids = db.execute(id_stmt).scalars().all()
+    if not matched_ids:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"No se encontró ningún cliente con el correo '{normalized}'.")
 
     full_stmt = (
         select(Customer)

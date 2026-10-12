@@ -33,7 +33,7 @@ agg AS (
     SELECT
         customer_id,
         COUNT(*) AS total_registros,
-        COUNT(*) FILTER (WHERE {DATASEFIL_MATCH}) AS registros_datasefil
+        COUNT(CASE WHEN {DATASEFIL_MATCH} THEN 1 END) AS registros_datasefil
     FROM contactos
     WHERE source IS NOT NULL
     GROUP BY customer_id
@@ -41,30 +41,30 @@ agg AS (
 SELECT
     (SELECT COUNT(*) FROM customers) AS total_clientes,
     COUNT(*) AS clientes_con_algun_registro,
-    COUNT(*) FILTER (WHERE registros_datasefil = total_registros) AS clientes_100pct_datasefil,
-    COUNT(*) FILTER (WHERE registros_datasefil > 0 AND registros_datasefil < total_registros) AS clientes_parcial_datasefil,
-    COUNT(*) FILTER (WHERE registros_datasefil = 0) AS clientes_sin_datasefil
+    COUNT(CASE WHEN registros_datasefil = total_registros THEN 1 END) AS clientes_100pct_datasefil,
+    COUNT(CASE WHEN registros_datasefil > 0 AND registros_datasefil < total_registros THEN 1 END) AS clientes_parcial_datasefil,
+    COUNT(CASE WHEN registros_datasefil = 0 THEN 1 END) AS clientes_sin_datasefil
 FROM agg;
 """
 
 QUERY_POR_TIPO = f"""
 SELECT 'phones' AS tipo,
-       COUNT(*) FILTER (WHERE {DATASEFIL_MATCH.replace('source', 'created_source')}) AS registros_datasefil,
+       COUNT(CASE WHEN {DATASEFIL_MATCH.replace('source', 'created_source')} THEN 1 END) AS registros_datasefil,
        COUNT(*) AS total_registros
 FROM collection_phones
 UNION ALL
 SELECT 'addresses',
-       COUNT(*) FILTER (WHERE {DATASEFIL_MATCH.replace('source', 'created_source')}),
+       COUNT(CASE WHEN {DATASEFIL_MATCH.replace('source', 'created_source')} THEN 1 END),
        COUNT(*)
 FROM collection_addresses
 UNION ALL
 SELECT 'emails',
-       COUNT(*) FILTER (WHERE {DATASEFIL_MATCH.replace('source', 'created_source')}),
+       COUNT(CASE WHEN {DATASEFIL_MATCH.replace('source', 'created_source')} THEN 1 END),
        COUNT(*)
 FROM collection_emails
 UNION ALL
 SELECT 'relationships',
-       COUNT(*) FILTER (WHERE {DATASEFIL_MATCH}),
+       COUNT(CASE WHEN {DATASEFIL_MATCH} THEN 1 END),
        COUNT(*)
 FROM customer_relationships;
 """

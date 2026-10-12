@@ -23,7 +23,7 @@ Uso:
 import argparse
 from collections import defaultdict
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 
 from app.core.database import SessionLocal
 from app.services.data_cleaning import normalize_address_key
@@ -105,7 +105,10 @@ def main():
         for i in range(0, len(ids_to_delete), DELETE_BATCH):
             batch = ids_to_delete[i:i + DELETE_BATCH]
             deleted += db.execute(
-                text("DELETE FROM collection_addresses WHERE id = ANY(:ids)"), {"ids": batch}
+                text("DELETE FROM collection_addresses WHERE id IN :ids").bindparams(
+                    bindparam("ids", expanding=True)
+                ),
+                {"ids": batch},
             ).rowcount
 
         db.commit()

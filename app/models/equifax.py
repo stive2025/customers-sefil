@@ -6,11 +6,10 @@ Almacena el historial de consultas por cliente con el raw data de la respuesta.
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON, ForeignKey, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.models.base import Base, UTCDateTime
 from app.models.customer import Customer
 
 
@@ -19,8 +18,7 @@ class EquifaxQuery(Base):
     Registra cada consulta realizada al Buró Equifax para un cliente.
     Guarda el score, el resultado del análisis y el payload crudo de la respuesta.
 
-    Nota: Se usa JSONB para PostgreSQL por su eficiencia en almacenamiento y búsqueda.
-    Si usas SQLite o MySQL, cambia JSONB por sqlalchemy.types.JSON.
+    Nota: raw_response usa el tipo JSON nativo de MySQL/MariaDB.
     """
 
     __tablename__ = "equifax_queries"
@@ -35,8 +33,8 @@ class EquifaxQuery(Base):
 
     # --- Datos de la Consulta ---
     fecha_consulta: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
+        UTCDateTime(),
+        server_default=text("CURRENT_TIMESTAMP(6)"),
         nullable=False,
         comment="Fecha y hora exacta en que se realizó la consulta al buró",
     )
@@ -54,14 +52,14 @@ class EquifaxQuery(Base):
 
     # --- Payload Crudo ---
     raw_response: Mapped[Optional[Dict[str, Any]]] = mapped_column(
-        JSONB,
+        JSON,
         nullable=True,
         comment="Respuesta cruda (raw data) retornada por la API de Equifax en formato JSON",
     )
 
     # --- Timestamps ---
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        UTCDateTime(), server_default=text("CURRENT_TIMESTAMP(6)"), nullable=False
     )
 
     # --- Relación inversa hacia Customer ---

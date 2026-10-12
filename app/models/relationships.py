@@ -6,10 +6,10 @@ Stores the `parents` array from DATA SEFIL (MADRE, PADRE, HIJO, HERMANO, CONYUGE
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Date, ForeignKey, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.models.base import Base, UTCDateTime
 from app.models.customer import Customer
 
 
@@ -43,7 +43,7 @@ class CustomerRelationship(Base):
 
     source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="DATA SEFIL")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        UTCDateTime(), server_default=text("CURRENT_TIMESTAMP(6)"), nullable=False
     )
 
     customer: Mapped["Customer"] = relationship("Customer", back_populates="relationships")

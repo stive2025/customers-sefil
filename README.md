@@ -28,7 +28,7 @@ API REST para la gestión centralizada de información de clientes, unificando d
   Internet ──:443──►│  [ Nginx del servidor ]                 │
                     │         │                               │
                     │         ▼ :8002                         │
-                    │     [ API ]  →  [ PostgreSQL ]          │
+                    │     [ API ]  →  [ MySQL / MariaDB ]     │
                     │                                         │
                     └─────────────────────────────────────────┘
                                         ▲
@@ -62,9 +62,8 @@ API REST para la gestión centralizada de información de clientes, unificando d
 | Servidor ASGI | Uvicorn |
 | ORM | SQLAlchemy 2.0 |
 | Validación | Pydantic V2 |
-| Base de datos central | PostgreSQL 15 |
-| Conector PostgreSQL | psycopg2-binary |
-| Conector MySQL (Leads) | PyMySQL + cryptography |
+| Base de datos central | MySQL / MariaDB (Hostinger, `srv1434.hstgr.io`) |
+| Conector MySQL (central y Leads) | PyMySQL + cryptography |
 | Migraciones | Alembic |
 | Contenedores | Docker + Docker Compose |
 
@@ -108,12 +107,12 @@ API REST para la gestión centralizada de información de clientes, unificando d
 │       └── etl_fetcher.py           # Helpers de paginación HTTP paralela
 ├── alembic/
 │   └── versions/                    # Migraciones de esquema
-├── .env                             # Variables del API y PostgreSQL (NO commitear)
+├── .env                             # Variables del API y MySQL (NO commitear)
 ├── .env.sync                        # Variables de fuentes externas para sync_manual.py (NO commitear)
 ├── sync_manual.py                   # Script de sincronización manual desde red LAN
 ├── Dockerfile                       # Imagen base para la API
-├── docker-compose.yml               # Entorno local (db + api)
-├── docker-compose.prod.yml          # Entorno Hostinger (db + api + nginx)
+├── docker-compose.yml               # Entorno local (api)
+├── docker-compose.prod.yml          # Entorno Hostinger (api)
 └── requirements.txt                 # Dependencias Python
 ```
 
@@ -121,15 +120,20 @@ API REST para la gestión centralizada de información de clientes, unificando d
 
 ## Archivos de Entorno
 
-### `.env` — API y PostgreSQL
+### `.env` — API y MySQL
 
 Usado por `docker-compose.yml` y `docker-compose.prod.yml`:
 
 ```env
-# ── PostgreSQL ────────────────────────────────────────────────────────────────
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=tu_password
-POSTGRES_DB=centralizacion_db
+# ── MySQL (base central) ──────────────────────────────────────────────────────
+MYSQL_HOST=srv1434.hstgr.io
+MYSQL_PORT=3306
+MYSQL_DATABASE=u434375413_customers
+MYSQL_USER=u434375413_customers
+MYSQL_PASSWORD='tu_password'
+# Opcional: tamaño del pool (el servidor permite 100 conexiones por usuario)
+# DB_POOL_SIZE=10
+# DB_MAX_OVERFLOW=20
 
 # ── API Keys (formato: nombre:clave o solo clave) ─────────────────────────────
 API_KEYS="sk_live_collecta_xxx,sk_live_sefil_yyy,sk_live_worker_zzz"
@@ -402,9 +406,10 @@ alembic downgrade -1
 | `a1b2c3d4e5f6` | Expansión de columnas VARCHAR + tabla `customer_relationships` |
 | `b2c3d4e5f6a7` | Columnas `calls_effective` y `calls_not_effective` en `collection_phones` |
 
-> **Nota:** Si Alembic reporta `Can't locate revision`, la tabla `alembic_version` tiene una revisión huérfana. Corrección:
-> ```bash
-> docker compose exec db psql -U postgres -d centralizacion_db \
->   -c "UPDATE alembic_version SET version_num = 'b2c3d4e5f6a7';"
-> alembic upgrade head
+> **Nota:** Si Alembic reporta `Can't locate revision`, la tabla `alembic_version` tiene una revisión huérfana. Corrección (consola MySQL / phpMyAdmin):
+> ```sql
+> UPDATE alembic_version SET version_num = '<revisión_actual>';
 > ```
+> y luego `alembic upgrade head`.
+
+> **Migración desde PostgreSQL:** la base central se migró a MySQL con `scripts/migrate_postgres_to_mysql.py`, que copia también `alembic_version`; las migraciones nuevas se aplican sobre esa revisión. Las revisiones anteriores se escribieron para PostgreSQL y no deben volver a ejecutarse sobre MySQL. Para crear una base vacía desde cero: `Base.metadata.create_all(engine)` y luego `alembic stamp head`.

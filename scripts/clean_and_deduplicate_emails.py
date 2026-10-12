@@ -14,7 +14,7 @@ def main():
         if args.dry_run:
             # Contar basura
             res_junk = db.execute(text(
-                "SELECT COUNT(*) FROM collection_emails WHERE email_address ILIKE '%vacuna%' OR email_address ILIKE '%covid%' OR email_address ILIKE '%salud%' OR email_address ILIKE '%.gob.ec' OR email_address ILIKE 'notiene%'"
+                "SELECT COUNT(*) FROM collection_emails WHERE LOWER(email_address) LIKE '%vacuna%' OR LOWER(email_address) LIKE '%covid%' OR LOWER(email_address) LIKE '%salud%' OR LOWER(email_address) LIKE '%.gob.ec' OR LOWER(email_address) LIKE 'notiene%'"
             )).scalar()
             print(f"[DRY-RUN] Se detectarón {res_junk} correos basura ('vacuna', 'covid', 'salud', '.gob.ec' o 'notiene').")
 
@@ -31,17 +31,17 @@ def main():
         else:
             # 1. Eliminar basura
             res_junk = db.execute(text(
-                "DELETE FROM collection_emails WHERE email_address ILIKE '%vacuna%' OR email_address ILIKE '%covid%' OR email_address ILIKE '%salud%' OR email_address ILIKE '%.gob.ec' OR email_address ILIKE 'notiene%'"
+                "DELETE FROM collection_emails WHERE LOWER(email_address) LIKE '%vacuna%' OR LOWER(email_address) LIKE '%covid%' OR LOWER(email_address) LIKE '%salud%' OR LOWER(email_address) LIKE '%.gob.ec' OR LOWER(email_address) LIKE 'notiene%'"
             ))
             print(f"Borrados {res_junk.rowcount} correos basura.")
 
-            # 2. Eliminar duplicados usando SQL nativo (Postgres sintaxis equivalente al INNER JOIN de MySQL)
+            # 2. Eliminar duplicados (DELETE con INNER JOIN, sintaxis MySQL)
             res_dup = db.execute(text("""
-                DELETE FROM collection_emails a
-                USING collection_emails b
-                WHERE a.id > b.id
-                AND a.customer_id = b.customer_id
+                DELETE a FROM collection_emails a
+                INNER JOIN collection_emails b
+                ON a.customer_id = b.customer_id
                 AND a.email_address = b.email_address
+                WHERE a.id > b.id
             """))
             print(f"Borrados {res_dup.rowcount} correos duplicados exactos.")
             

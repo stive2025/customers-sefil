@@ -10,10 +10,10 @@ All models share a Many-to-One relationship with Customer.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, SmallInteger, String, func, UniqueConstraint
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, SmallInteger, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.models.base import Base, UTCDateTime
 from app.models.customer import Customer
 
 
@@ -38,14 +38,14 @@ class CollectionPhone(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     created_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime(), nullable=True)
     updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     updated_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime(), nullable=True)
     deleted_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     deleted_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        UTCDateTime(), server_default=text("CURRENT_TIMESTAMP(6)"), nullable=False
     )
 
     customer: Mapped["Customer"] = relationship("Customer", back_populates="phones")
@@ -77,14 +77,14 @@ class CollectionAddress(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     created_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime(), nullable=True)
     updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     updated_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime(), nullable=True)
     deleted_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     deleted_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        UTCDateTime(), server_default=text("CURRENT_TIMESTAMP(6)"), nullable=False
     )
 
     customer: Mapped["Customer"] = relationship("Customer", back_populates="addresses")
@@ -109,14 +109,14 @@ class CollectionEmail(Base):
     # ── Auditoría ──────────────────────────────────────────────────────────────
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     created_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime(), nullable=True)
     updated_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     updated_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime(), nullable=True)
     deleted_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     deleted_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        UTCDateTime(), server_default=text("CURRENT_TIMESTAMP(6)"), nullable=False
     )
 
     customer: Mapped["Customer"] = relationship("Customer", back_populates="emails")

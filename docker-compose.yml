@@ -6,36 +6,7 @@ networks:
       config:
         - subnet: 10.50.0.0/16
 
-volumes:
-  postgres_data:
-    name: centralizacion_postgres_data
-
 services:
-
-  # ────────────────────────────────────────────────────────────────────────────
-  # Base de Datos PostgreSQL 15
-  # ────────────────────────────────────────────────────────────────────────────
-  db:
-    image: postgres:15-alpine
-    container_name: centralizacion_db
-    restart: unless-stopped
-    command: ["postgres", "-c", "max_connections=200"]
-    environment:
-      POSTGRES_USER:     ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-S3F1L_Dev}
-      POSTGRES_DB:       ${POSTGRES_DB:-centralizacion_db}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:5433:5432"   # Worker nativo en Windows se conecta via localhost:5433
-    networks:
-      - mdm_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-centralizacion_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
 
   # ────────────────────────────────────────────────────────────────────────────
   # API REST — FastAPI / Uvicorn
@@ -46,15 +17,10 @@ services:
       dockerfile: Dockerfile
     container_name: centralizacion_api
     restart: unless-stopped
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-S3F1L_Dev}@db:5432/${POSTGRES_DB:-centralizacion_db}
+    env_file: .env          # MYSQL_HOST, MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD
     ports:
       - "8002:8002"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8002
-    depends_on:
-      db:
-        condition: service_healthy
     networks:
       - mdm_network
 

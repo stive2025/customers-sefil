@@ -6,10 +6,10 @@ All field names and relationships use English for consistency.
 from datetime import date, datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Date, DateTime, String, func
+from sqlalchemy import Date, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.models.base import Base, UTCDateTime
 
 # Avoid circular imports: only resolved at type-checking time
 if TYPE_CHECKING:
@@ -68,12 +68,12 @@ class Customer(Base):
 
     # --- Timestamps ---
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
+        UTCDateTime(),
+        server_default=text("CURRENT_TIMESTAMP(6)"),
         nullable=False,
     )
     updated_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True),
+        UTCDateTime(),
         onupdate=func.now(),
         nullable=True,
     )

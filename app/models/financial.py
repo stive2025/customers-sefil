@@ -6,10 +6,10 @@ One-to-Many relationship with Customer (a customer can have multiple records ove
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, func
+from sqlalchemy import ForeignKey, Integer, Numeric, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.models.base import Base, UTCDateTime
 from app.models.customer import Customer
 
 
@@ -39,10 +39,10 @@ class FinancialInformation(Base):
 
     # --- Timestamps ---
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        UTCDateTime(), server_default=text("CURRENT_TIMESTAMP(6)"), nullable=False
     )
     updated_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), onupdate=func.now(), nullable=True
+        UTCDateTime(), onupdate=func.now(), nullable=True
     )
 
     # --- Inverse relationship to Customer ---

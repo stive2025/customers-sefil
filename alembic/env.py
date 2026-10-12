@@ -45,8 +45,12 @@ target_metadata = Base.metadata
 # ---------------------------------------------------------------------------
 # MODIFICACIÓN 4: Sobrescribir la URL de la BD desde la variable de entorno.
 # Evita hardcodear credenciales en alembic.ini.
+# El "%" se duplica porque configparser lo interpreta (la contraseña puede tenerlo).
 # ---------------------------------------------------------------------------
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+config.set_main_option(
+    "sqlalchemy.url",
+    DATABASE_URL.render_as_string(hide_password=False).replace("%", "%%"),
+)
 
 
 def run_migrations_offline() -> None:

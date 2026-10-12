@@ -252,7 +252,9 @@ def mysql_name(name: str) -> str:
 def is_autoincrement(src_col) -> bool:
     if not src_col.primary_key or not isinstance(src_col.type, Integer):
         return False
-    default = str(getattr(src_col.server_default, "arg", "") or "")
+    # server_default.arg es un TextClause: no se puede evaluar como booleano
+    arg = getattr(src_col.server_default, "arg", None)
+    default = "" if arg is None else str(arg)
     return "nextval(" in default or src_col.identity is not None or src_col.autoincrement is True
 
 
